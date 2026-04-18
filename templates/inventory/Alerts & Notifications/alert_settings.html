@@ -1,0 +1,777 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إعدادات التنبيهات - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .settings-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .rule-card {
+            border: 2px solid #e3e6f0;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .rule-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+
+        .rule-card.active {
+            border-color: #28a745;
+            background-color: rgba(40, 167, 69, 0.05);
+        }
+
+        .rule-card.inactive {
+            border-color: #6c757d;
+            background-color: #f8f9fa;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #28a745;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .condition-builder {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .test-result {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .template-preview {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">إعدادات التنبيهات</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:stock_alerts' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للتنبيهات
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- قواعد التنبيه -->
+            <div class="settings-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0">قواعد التنبيه الآلي</h4>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRuleModal">
+                        <i class="bi bi-plus-circle"></i>
+                        قاعدة جديدة
+                    </button>
+                </div>
+
+                {% if alert_rules %}
+                    <div class="row">
+                        {% for rule in alert_rules %}
+                            <div class="col-md-6 mb-3">
+                                <div class="rule-card {% if rule.is_active %}active{% else %}inactive{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <h6 class="mb-1">{{ rule.name }}</h6>
+                                            <p class="text-muted small mb-2">{{ rule.description }}</p>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" {% if rule.is_active %}checked{% endif %}
+                                                   data-rule-id="{{ rule.id }}" class="rule-toggle">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <span class="badge bg-primary">{{ rule.get_rule_type_display }}</span>
+                                        <span class="badge bg-{% if rule.priority == 'critical' %}danger{% elif rule.priority == 'high' %}warning{% elif rule.priority == 'medium' %}info{% else %}secondary{% endif %}">
+                                {{ rule.get_priority_display }}
+                            </span>
+                                        <span class="badge bg-light text-dark">{{ rule.get_check_frequency_display }}</span>
+                                    </div>
+
+                                    <div class="condition-builder">
+                                        <small class="text-muted d-block mb-2">شرط التنبيه:</small>
+                                        <code>
+                                            إذا كان {{ rule.condition_field }}
+                                            {{ rule.get_condition_operator_display }}
+                                            {{ rule.condition_value }}
+                                        </code>
+                                    </div>
+
+                                    <div class="btn-group w-100">
+                                        <button class="btn btn-sm btn-outline-warning edit-rule"
+                                                data-rule-id="{{ rule.id }}">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-info test-rule"
+                                                data-rule-id="{{ rule.id }}">
+                                            <i class="bi bi-play-circle"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-rule"
+                                                data-rule-id="{{ rule.id }}">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-sliders text-muted" style="font-size: 4rem;"></i>
+                        <h5 class="text-muted mt-3">لا توجد قواعد تنبيه</h5>
+                        <p class="text-muted">أنشئ قواعد تنبيه آلية لمراقبة المخزون تلقائياً</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRuleModal">
+                            <i class="bi bi-plus-circle"></i>
+                            إنشاء قاعدة جديدة
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- إعدادات عامة -->
+            <div class="settings-card">
+                <h4 class="mb-4">الإعدادات العامة</h4>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">حد التنبيه بالبريد الإلكتروني</label>
+                        <select class="form-select" id="emailAlertLimit">
+                            <option value="all">جميع التنبيهات</option>
+                            <option value="critical">الحرجة والعالية فقط</option>
+                            <option value="critical_only">الحرجة فقط</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">حد التنبيه بالرسائل النصية</label>
+                        <select class="form-select" id="smsAlertLimit">
+                            <option value="critical">الحرجة فقط</option>
+                            <option value="critical_high">الحرجة والعالية</option>
+                            <option value="none">لا توجد رسائل نصية</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">توقيت الإشعارات</label>
+                        <select class="form-select" id="notificationTime">
+                            <option value="immediate">فوري</option>
+                            <option value="hourly">كل ساعة</option>
+                            <option value="daily">يومي</option>
+                            <option value="working_hours">أوقات العمل فقط</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">تجميع التنبيهات</label>
+                        <select class="form-select" id="alertAggregation">
+                            <option value="individual">تنبيهات فردية</option>
+                            <option value="hourly">تجميع ساعي</option>
+                            <option value="daily">تجميع يومي</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="enableEscalation">
+                    <label class="form-check-label" for="enableEscalation">
+                        تمكين نظام التصعيد
+                    </label>
+                </div>
+
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="enableMobilePush">
+                    <label class="form-check-label" for="enableMobilePush">
+                        الإشعارات الدفعية على الجوال
+                    </label>
+                </div>
+
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enableSound">
+                    <label class="form-check-label" for="enableSound">
+                        صوت التنبيه
+                    </label>
+                </div>
+            </div>
+
+            <!-- قوالب الرسائل -->
+            <div class="settings-card">
+                <h4 class="mb-4">قوالب الرسائل</h4>
+
+                <div class="mb-4">
+                    <label class="form-label">قالب البريد الإلكتروني</label>
+                    <select class="form-select" id="emailTemplate">
+                        <option value="default">القالب الافتراضي</option>
+                        <option value="minimal">تصميم بسيط</option>
+                        <option value="detailed">تفصيلي مع الرسوم البيانية</option>
+                        <option value="custom">مخصص</option>
+                    </select>
+                </div>
+
+                <div class="template-preview">
+                    <h6>معاينة القالب:</h6>
+                    <div class="border rounded p-3 bg-white">
+                        <strong>تنبيه: مخزون منخفض</strong>
+                        <p class="mb-1">المنتج: سامسونج جالاكسي S24</p>
+                        <p class="mb-1">المخزن: الرياض الرئيسي</p>
+                        <p class="mb-1">المخزون الحالي: 5 وحدات</p>
+                        <p class="mb-0">الحد الأدنى: 10 وحدات</p>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">قالب الرسائل النصية</label>
+                    <textarea class="form-control" rows="3" id="smsTemplate">
+تنبيه: {{ product_name }} منخفض في {{ warehouse_name }}. المخزون: {{ current_stock }}/{{ min_stock }}
+                </textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">المتغيرات المتاحة:</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge bg-light text-dark">{{ product_name }}</span>
+                        <span class="badge bg-light text-dark">{{ warehouse_name }}</span>
+                        <span class="badge bg-light text-dark">{{ current_stock }}</span>
+                        <span class="badge bg-light text-dark">{{ min_stock }}</span>
+                        <span class="badge bg-light text-dark">{{ max_stock }}</span>
+                        <span class="badge bg-light text-dark">{{ alert_type }}</span>
+                        <span class="badge bg-light text-dark">{{ priority }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- إحصائيات القواعد -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات القواعد</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="text-primary">
+                                <div class="h4">{{ total_rules }}</div>
+                                <div class="small">إجمالي القواعد</div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="text-success">
+                                <div class="h4">{{ active_rules_count }}</div>
+                                <div class="small">قواعد نشطة</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-warning">
+                                <div class="h4">{{ alerts_generated }}</div>
+                                <div class="small">تنبيهات م generated</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-info">
+                                <div class="h4">{{ success_rate }}%</div>
+                                <div class="small">معدل النجاح</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- اختبار القواعد -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">اختبار القواعد</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">اختر منتج للاختبار</label>
+                        <select class="form-select" id="testProduct">
+                            <option value="">اختر منتج...</option>
+                            {% for product in test_products %}
+                                <option value="{{ product.id }}">{{ product.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">اختر مخزن</label>
+                        <select class="form-select" id="testWarehouse">
+                            <option value="">اختر مخزن...</option>
+                            {% for warehouse in warehouses %}
+                                <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button class="btn btn-outline-primary w-100" id="runTest">
+                        <i class="bi bi-play-circle"></i>
+                        تشغيل الاختبار
+                    </button>
+
+                    <div class="test-result d-none" id="testResult">
+                        <h6>نتيجة الاختبار:</h6>
+                        <div id="testResultContent"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- سجل التنفيذ -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">آخر التنفيذات</h6>
+                </div>
+                <div class="card-body">
+                    {% for execution in recent_executions %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <div>
+                                <strong class="small">{{ execution.rule.name }}</strong>
+                                <div class="text-muted">{{ execution.timestamp|date:"H:i" }}</div>
+                            </div>
+                            <span class="badge {% if execution.success %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ execution.alerts_generated }}
+                    </span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted text-center small">لا توجد سجلات تنفيذ</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- الإجراءات السريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">الإجراءات السريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-success" id="enableAllRules">
+                            <i class="bi bi-power"></i>
+                            تفعيل جميع القواعد
+                        </button>
+                        <button class="btn btn-outline-warning" id="disableAllRules">
+                            <i class="bi bi-pause-circle"></i>
+                            تعطيل جميع القواعد
+                        </button>
+                        <button class="btn btn-outline-info" id="runAllRules">
+                            <i class="bi bi-play-circle"></i>
+                            تشغيل جميع القواعد
+                        </button>
+                        <button class="btn btn-outline-danger" id="resetSettings">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            إعادة التعيين
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال قاعدة جديدة -->
+    <div class="modal fade" id="newRuleModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">قاعدة تنبيه جديدة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newRuleForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">اسم القاعدة</label>
+                                <input type="text" class="form-control" name="rule_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">نوع القاعدة</label>
+                                <select class="form-select" name="rule_type" required>
+                                    <option value="">اختر النوع</option>
+                                    <option value="low_stock">مخزون منخفض</option>
+                                    <option value="over_stock">مخزون زائد</option>
+                                    <option value="expiry">انتهاء الصلاحية</option>
+                                    <option value="slow_moving">بطيء الحركة</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">الأولوية</label>
+                                <select class="form-select" name="priority" required>
+                                    <option value="low">منخفض</option>
+                                    <option value="medium">متوسط</option>
+                                    <option value="high">عالي</option>
+                                    <option value="critical">حرج</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">تكرار الفحص</label>
+                                <select class="form-select" name="frequency" required>
+                                    <option value="realtime">فوري</option>
+                                    <option value="daily">يومي</option>
+                                    <option value="weekly">أسبوعي</option>
+                                    <option value="monthly">شهري</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="condition-builder">
+                            <h6>بناء الشرط</h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">الحقل</label>
+                                    <select class="form-select" name="condition_field" required>
+                                        <option value="quantity">الكمية</option>
+                                        <option value="min_stock">الحد الأدنى</option>
+                                        <option value="max_stock">الحد الأقصى</option>
+                                        <option value="days_to_expiry">أيام حتى انتهاء الصلاحية</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">المعامل</label>
+                                    <select class="form-select" name="condition_operator" required>
+                                        <option value="lt">أقل من</option>
+                                        <option value="lte">أقل من أو يساوي</option>
+                                        <option value="gt">أكبر من</option>
+                                        <option value="gte">أكبر من أو يساوي</option>
+                                        <option value="eq">يساوي</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">القيمة</label>
+                                    <input type="number" class="form-control" name="condition_value" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">النطاق</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="all_warehouses"
+                                       id="allWarehouses">
+                                <label class="form-check-label" for="allWarehouses">
+                                    جميع المخازن
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="all_categories"
+                                       id="allCategories">
+                                <label class="form-check-label" for="allCategories">
+                                    جميع التصنيفات
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">الوصف</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" id="saveRule">حفظ القاعدة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // تبديل حالة القاعدة
+            document.querySelectorAll('.rule-toggle').forEach(toggle => {
+                toggle.addEventListener('change', function () {
+                    const ruleId = this.dataset.ruleId;
+                    const isActive = this.checked;
+
+                    // محاكاة تغيير الحالة
+                    const ruleCard = this.closest('.rule-card');
+                    if (isActive) {
+                        ruleCard.classList.remove('inactive');
+                        ruleCard.classList.add('active');
+                    } else {
+                        ruleCard.classList.remove('active');
+                        ruleCard.classList.add('inactive');
+                    }
+
+                    // في التطبيق الحقيقي: طلب AJAX لتحديث الحالة
+                    console.log(`Rule ${ruleId} ${isActive ? 'activated' : 'deactivated'}`);
+                });
+            });
+
+            // اختبار القاعدة
+            document.getElementById('runTest').addEventListener('click', function () {
+                const productId = document.getElementById('testProduct').value;
+                const warehouseId = document.getElementById('testWarehouse').value;
+
+                if (!productId || !warehouseId) {
+                    alert('يرجى اختيار المنتج والمخزن');
+                    return;
+                }
+
+                // محاكاة الاختبار
+                const testResult = document.getElementById('testResult');
+                const testResultContent = document.getElementById('testResultContent');
+
+                testResultContent.innerHTML = `
+            <div class="text-success">
+                <i class="bi bi-check-circle"></i>
+                تم اكتشاف 3 قواعد تنطبق على المنتج
+            </div>
+            <ul class="mt-2 small">
+                <li>قاعدة المخزون المنخفض - تنطبق</li>
+                <li>قاعدة انتهاء الصلاحية - لا تنطبق</li>
+                <li>قاعدة الحركة البطيئة - تنطبق</li>
+            </ul>
+        `;
+
+                testResult.classList.remove('d-none');
+            });
+
+            // الإجراءات الجماعية
+            document.getElementById('enableAllRules').addEventListener('click', function () {
+                if (confirm('هل تريد تفعيل جميع قواعد التنبيه؟')) {
+                    document.querySelectorAll('.rule-toggle').forEach(toggle => {
+                        toggle.checked = true;
+                        toggle.dispatchEvent(new Event('change'));
+                    });
+                    alert('تم تفعيل جميع القواعد');
+                }
+            });
+
+            document.getElementById('disableAllRules').addEventListener('click', function () {
+                if (confirm('هل تريد تعطيل جميع قواعد التنبيه؟')) {
+                    document.querySelectorAll('.rule-toggle').forEach(toggle => {
+                        toggle.checked = false;
+                        toggle.dispatchEvent(new Event('change'));
+                    });
+                    alert('تم تعطيل جميع القواعد');
+                }
+            });
+
+            document.getElementById('runAllRules').addEventListener('click', function () {
+                if (confirm('هل تريد تشغيل جميع القواعد النشطة الآن؟')) {
+                    showLoading('جاري تشغيل القواعد...');
+                    setTimeout(() => {
+                        alert('تم تشغيل جميع القواعد بنجاح');
+                    }, 2000);
+                }
+            });
+
+            document.getElementById('resetSettings').addEventListener('click', function () {
+                if (confirm('هل تريد إعادة تعيين جميع الإعدادات إلى القيم الافتراضية؟')) {
+                    // محاكاة إعادة التعيين
+                    document.querySelectorAll('.rule-toggle').forEach(toggle => {
+                        toggle.checked = true;
+                        toggle.dispatchEvent(new Event('change'));
+                    });
+
+                    document.getElementById('emailAlertLimit').value = 'all';
+                    document.getElementById('smsAlertLimit').value = 'critical';
+                    document.getElementById('notificationTime').value = 'immediate';
+                    document.getElementById('alertAggregation').value = 'individual';
+
+                    alert('تم إعادة التعيين بنجاح');
+                }
+            });
+
+            // حفظ القاعدة الجديدة
+            document.getElementById('saveRule').addEventListener('click', function () {
+                const form = document.getElementById('newRuleForm');
+                const formData = new FormData(form);
+
+                // التحقق من البيانات
+                if (!formData.get('rule_name') || !formData.get('rule_type') || !formData.get('condition_value')) {
+                    alert('يرجى ملء جميع الحقول المطلوبة');
+                    return;
+                }
+
+                // محاكاة حفظ القاعدة
+                showLoading('جاري حفظ القاعدة...');
+
+                setTimeout(() => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('newRuleModal'));
+                    modal.hide();
+                    alert('تم حفظ القاعدة بنجاح');
+                    form.reset();
+
+                    // في التطبيق الحقيقي: إعادة تحميل الصفحة أو إضافة القاعدة ديناميكياً
+                    location.reload();
+                }, 1500);
+            });
+
+            // تحرير القاعدة
+            document.querySelectorAll('.edit-rule').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const ruleId = this.dataset.ruleId;
+                    alert(`فتح محرر القاعدة #${ruleId}`);
+                    // في التطبيق الحقيقي: فتح مودال التحرير مع بيانات القاعدة
+                });
+            });
+
+            // اختبار القاعدة الفردية
+            document.querySelectorAll('.test-rule').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const ruleId = this.dataset.ruleId;
+                    showLoading(`جاري اختبار القاعدة #${ruleId}...`);
+
+                    setTimeout(() => {
+                        alert(`تم اختبار القاعدة #${ruleId} - تم اكتشاف 12 منتج ينطبق عليها الشرط`);
+                    }, 1500);
+                });
+            });
+
+            // حذف القاعدة
+            document.querySelectorAll('.delete-rule').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const ruleId = this.dataset.ruleId;
+
+                    if (confirm('هل تريد حذف هذه القاعدة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                        const ruleCard = this.closest('.rule-card');
+                        ruleCard.style.opacity = '0.5';
+
+                        // محاكاة الحذف
+                        setTimeout(() => {
+                            ruleCard.remove();
+                            alert('تم حذف القاعدة بنجاح');
+                        }, 1000);
+                    }
+                });
+            });
+
+            // معاينة القالب
+            document.getElementById('emailTemplate').addEventListener('change', function () {
+                const template = this.value;
+                const preview = document.querySelector('.template-preview .border');
+
+                const templates = {
+                    'default': `
+                <strong>تنبيه: مخزون منخفض</strong>
+                <p class="mb-1">المنتج: سامسونج جالاكسي S24</p>
+                <p class="mb-1">المخزن: الرياض الرئيسي</p>
+                <p class="mb-1">المخزون الحالي: 5 وحدات</p>
+                <p class="mb-0">الحد الأدنى: 10 وحدات</p>
+            `,
+                    'minimal': `
+                <strong>تنبيه مخزون</strong>
+                <p class="mb-1">سامسونج جالاكسي S24 - 5 وحدات متبقية</p>
+                <p class="mb-0">الحد الأدنى: 10 وحدات</p>
+            `,
+                    'detailed': `
+                <strong>📊 تقرير تنبيه المخزون</strong>
+                <p class="mb-1">🛒 المنتج: سامسونج جالاكسي S24</p>
+                <p class="mb-1">🏢 المخزن: الرياض الرئيسي</p>
+                <p class="mb-1">📦 المخزون الحالي: <span class="text-danger">5 وحدات</span></p>
+                <p class="mb-1">🎯 الحد الأدنى: 10 وحدات</p>
+                <p class="mb-0">⚠️ الأولوية: <span class="text-warning">عالية</span></p>
+            `
+                };
+
+                preview.innerHTML = templates[template] || templates['default'];
+            });
+
+            function showLoading(message) {
+                // محاكاة شاشة التحميل
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center';
+                loadingDiv.style.background = 'rgba(0,0,0,0.5)';
+                loadingDiv.style.zIndex = '9999';
+                loadingDiv.innerHTML = `
+            <div class="text-center text-white">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">جار التحميل...</span>
+                </div>
+                <p class="mt-2">${message}</p>
+            </div>
+        `;
+
+                document.body.appendChild(loadingDiv);
+                setTimeout(() => {
+                    document.body.removeChild(loadingDiv);
+                }, 2000);
+            }
+
+            // حفظ الإعدادات تلقائياً
+            let saveTimeout;
+
+            function debounceSave() {
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    // محاكاة حفظ الإعدادات
+                    console.log('تم حفظ الإعدادات');
+                }, 1000);
+            }
+
+            // إضافة أحداث الحفظ للإعدادات
+            document.querySelectorAll('select, input[type="checkbox"], textarea').forEach(element => {
+                element.addEventListener('change', debounceSave);
+            });
+        });
+    </script>
+{% endblock %}

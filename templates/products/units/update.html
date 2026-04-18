@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تعديل {{ unit.name }} - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .usage-card {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .product-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .warning-card {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">تعديل وحدة القياس: {{ unit.name }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:unit_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">معلومات الوحدة</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="unit-form">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">اسم الوحدة *</label>
+                                {{ form.name }}
+                                <div class="form-text">اسم واضح ومفهوم للوحدة</div>
+                                {% if form.name.errors %}
+                                    <div class="text-danger small">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.symbol.id_for_label }}" class="form-label">الرمز *</label>
+                                {{ form.symbol }}
+                                <div class="form-text">رمز مختصر للوحدة</div>
+                                {% if form.symbol.errors %}
+                                    <div class="text-danger small">{{ form.symbol.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.conversion_factor.id_for_label }}" class="form-label">عامل
+                                التحويل</label>
+                            {{ form.conversion_factor }}
+                            <div class="form-text">
+                                يستخدم لتحويل الوحدة إلى الوحدة الأساسية
+                            </div>
+                            {% if form.conversion_factor.errors %}
+                                <div class="text-danger small">{{ form.conversion_factor.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    وحدة نشطة
+                                </label>
+                            </div>
+                            <div class="form-text">الوحدات غير النشطة لن تظهر في القوائم المنسدلة</div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'products:unit_list' %}" class="btn btn-outline-secondary me-md-2">
+                                إلغاء
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i>
+                                حفظ التغييرات
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- تحذير إذا كانت الوحدة مستخدمة -->
+            {% if used_products_count > 0 %}
+                <div class="card mt-4">
+                    <div class="card-header bg-warning">
+                        <h6 class="mb-0 text-dark"><i class="bi bi-exclamation-triangle"></i> تنبيه مهم</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="warning-card">
+                            <h6>هذه الوحدة مستخدمة في {{ used_products_count }} منتج</h6>
+                            <p class="small text-muted mb-3">
+                                تغيير خصائص هذه الوحدة قد يؤثر على المنتجات المرتبطة بها.
+                                يرجى التأكد من أن التغييرات المطلوبة ضرورية ولا تؤثر سلباً على البيانات الحالية.
+                            </p>
+
+                            <div class="alert alert-info small">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>ملاحظة:</strong> لا يمكن حذف الوحدات المستخدمة في المنتجات.
+                                يمكنك تعطيلها بدلاً من ذلك إذا لم تعد بحاجة إليها.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <!-- معلومات الوحدة -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">معلومات الوحدة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="unit-icon mx-auto">
+                            <i class="bi bi-rulers"></i>
+                        </div>
+                    </div>
+
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>عدد المنتجات:</strong></td>
+                            <td>{{ used_products_count }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>الحالة الحالية:</strong></td>
+                            <td>
+                                {% if unit.is_active %}
+                                    <span class="badge bg-success">نشط</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">غير نشط</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>تاريخ الإنشاء:</strong></td>
+                            <td>{{ unit.created_at|date:"Y/m/d" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- المنتجات المستخدمة -->
+            {% if used_products %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">المنتجات المستخدمة</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="usage-card">
+                            <p class="small text-muted mb-2">أحدث المنتجات التي تستخدم هذه الوحدة:</p>
+                            <div class="product-list">
+                                {% for product in used_products %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                        <div>
+                                            <a href="{% url 'products:product_detail' product.id %}"
+                                               class="text-decoration-none">
+                                                {{ product.name }}
+                                            </a>
+                                            <small class="text-muted d-block">{{ product.sku }}</small>
+                                        </div>
+                                        <span class="badge bg-light text-dark">
+                                {{ product.get_total_stock }}
+                            </span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        {% if used_products_count > 5 %}
+                            <div class="text-center mt-2">
+                                <a href="{% url 'products:product_list' %}?unit={{ unit.id }}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    عرض جميع المنتجات ({{ used_products_count }})
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- إجراءات -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'products:product_create' %}?unit={{ unit.id }}"
+                           class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-plus-lg"></i>
+                            إضافة منتج جديد
+                        </a>
+
+                        {% if used_products_count == 0 %}
+                            <button type="button"
+                                    class="btn btn-outline-danger btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteModal">
+                                <i class="bi bi-trash"></i>
+                                حذف الوحدة
+                            </button>
+                        {% else %}
+                            <button type="button"
+                                    class="btn btn-outline-secondary btn-sm"
+                                    disabled
+                                    title="لا يمكن حذف وحدة مستخدمة في المنتجات">
+                                <i class="bi bi-trash"></i>
+                                حذف الوحدة
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal حذف الوحدة -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تأكيد الحذف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل أنت متأكد من رغبتك في حذف وحدة القياس <strong>"{{ unit.name }}"</strong>؟</p>
+                    <p class="text-danger">هذا الإجراء لا يمكن التراجع عنه.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <form method="post" action="{% url 'products:unit_delete' unit.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">حذف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // التحقق من صحة النموذج
+            const unitForm = document.getElementById('unit-form');
+            if (unitForm) {
+                unitForm.addEventListener('submit', function (e) {
+                    const nameInput = document.getElementById('id_name');
+                    const symbolInput = document.getElementById('id_symbol');
+                    const conversionInput = document.getElementById('id_conversion_factor');
+
+                    let isValid = true;
+
+                    // التحقق من الاسم
+                    if (!nameInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال اسم الوحدة');
+                        nameInput.focus();
+                    }
+                    // التحقق من الرمز
+                    else if (!symbolInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال رمز الوحدة');
+                        symbolInput.focus();
+                    }
+                    // التحقق من عامل التحويل
+                    else if (!conversionInput.value || parseFloat(conversionInput.value) <= 0) {
+                        isValid = false;
+                        alert('عامل التحويل يجب أن يكون رقم موجب');
+                        conversionInput.focus();
+                    }
+
+                    if (!isValid) {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    // تحذير إذا كانت الوحدة مستخدمة ويتم تعطيلها
+                    const isActiveInput = document.getElementById('id_is_active');
+                    const usedProductsCount = {{ used_products_count }};
+
+                    if (usedProductsCount > 0 && !isActiveInput.checked) {
+                        const confirmMessage = `هذه الوحدة مستخدمة في ${usedProductsCount} منتج.
+تعطيلها قد يؤثر على عرض هذه المنتجات. هل تريد المتابعة؟`;
+
+                        if (!confirm(confirmMessage)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    }
+
+                    return true;
+                });
+            }
+        });
+    </script>
+{% endblock %}

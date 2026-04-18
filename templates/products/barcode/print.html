@@ -1,0 +1,544 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}طباعة الباركود - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            .print-section, .print-section * {
+                visibility: visible;
+            }
+
+            .print-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .barcode-sheet {
+            background: white;
+            border: 1px solid #e3e6f0;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .barcode-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .barcode-item {
+            text-align: center;
+            padding: 1rem;
+            border: 1px solid #e3e6f0;
+            border-radius: 0.5rem;
+            page-break-inside: avoid;
+        }
+
+        .barcode-label {
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            font-weight: bold;
+        }
+
+        .barcode-sku {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-bottom: 0.25rem;
+        }
+
+        .barcode-price {
+            font-size: 0.875rem;
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .print-controls {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .template-card {
+            border: 2px solid #e3e6f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .template-card:hover,
+        .template-card.active {
+            border-color: var(--accent-color);
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        .label-size {
+            width: 64mm;
+            height: 34mm;
+            margin: 2mm;
+            display: inline-block;
+            vertical-align: top;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom no-print">
+        <h1 class="h2">طباعة الباركود</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:barcode_generator' %}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-upc"></i>
+                مولد الباركود
+            </a>
+            <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row no-print">
+        <div class="col-lg-8">
+            <!-- عناصر التحكم -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">إعدادات الطباعة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="print-controls">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="label-template" class="form-label">قالب الباركود</label>
+                                <select class="form-select" id="label-template">
+                                    <option value="standard">قياسي (64x34 ملم)</option>
+                                    <option value="small">صغير (40x20 ملم)</option>
+                                    <option value="large">كبير (80x40 ملم)</option>
+                                    <option value="custom">مخصص</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="copies-count" class="form-label">عدد النسخ لكل منتج</label>
+                                <input type="number" class="form-control" id="copies-count" value="1" min="1" max="10">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="barcode-size" class="form-label">حجم الباركود</label>
+                                <select class="form-select" id="barcode-size">
+                                    <option value="small">صغير</option>
+                                    <option value="medium" selected>متوسط</option>
+                                    <option value="large">كبير</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="paper-size" class="form-label">حجم الورق</label>
+                                <select class="form-select" id="paper-size">
+                                    <option value="A4">A4</option>
+                                    <option value="A5">A5</option>
+                                    <option value="letter">Letter</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="show-price" checked>
+                            <label class="form-check-label" for="show-price">إظهار السعر</label>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="show-sku" checked>
+                            <label class="form-check-label" for="show-sku">إظهار SKU</label>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="show-product-name" checked>
+                            <label class="form-check-label" for="show-product-name">إظهار اسم المنتج</label>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-secondary me-md-2" id="preview-print">
+                            <i class="bi bi-eye"></i>
+                            معاينة الطباعة
+                        </button>
+                        <button type="button" class="btn btn-success me-md-2" id="generate-preview">
+                            <i class="bi bi-arrow-repeat"></i>
+                            تحديث المعاينة
+                        </button>
+                        <button type="button" class="btn btn-primary" id="start-print">
+                            <i class="bi bi-printer"></i>
+                            طباعة
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- معاينة الطباعة -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">معاينة الطباعة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        المعاينة التالية توضح كيف سيظهر الباركود عند الطباعة.
+                        تأكد من ضبط إعدادات الطابعة على حجم الورق المناسب.
+                    </div>
+
+                    <div id="print-preview">
+                        <!-- سيتم ملؤها بالمعاينة -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- اختيار المنتجات -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">اختيار المنتجات</h6>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="ابحث عن المنتجات..." id="product-search">
+                        <button class="btn btn-outline-primary" type="button">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 300px;">
+                        <table class="table table-sm">
+                            <thead>
+                            <tr>
+                                <th>اختيار</th>
+                                <th>المنتج</th>
+                                <th>الباركود</th>
+                            </tr>
+                            </thead>
+                            <tbody id="product-selection-list">
+                            {% for product in products %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input product-checkbox"
+                                               value="{{ product.id }}" data-barcode="{{ product.barcode }}"
+                                               data-name="{{ product.name }}" data-sku="{{ product.sku }}"
+                                               data-price="{{ product.selling_price }}">
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if product.main_image %}
+                                                <img src="{{ product.main_image.url }}" alt="{{ product.name }}"
+                                                     class="rounded me-2"
+                                                     style="width: 30px; height: 30px; object-fit: cover;">
+                                            {% endif %}
+                                            <div>{{ product.name }}</div>
+                                        </div>
+                                    </td>
+                                    <td>{{ product.barcode }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <button type="button" class="btn btn-outline-success btn-sm" id="select-all">
+                            <i class="bi bi-check-all"></i>
+                            اختيار الكل
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="deselect-all">
+                            <i class="bi bi-x-circle"></i>
+                            إلغاء الكل
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- المنتجات المختارة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">المنتجات المختارة</h6>
+                </div>
+                <div class="card-body">
+                    <div id="selected-products-list">
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0">لم يتم اختيار أي منتجات</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- قسم الطباعة -->
+    <div class="print-section d-none" id="print-section">
+        <div class="barcode-sheet">
+            <div class="barcode-grid" id="print-barcode-grid">
+                <!-- سيتم ملؤها بالباركود للطباعة -->
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // عناصر DOM
+            const productSearch = document.getElementById('product-search');
+            const productCheckboxes = document.querySelectorAll('.product-checkbox');
+            const selectedProductsList = document.getElementById('selected-products-list');
+            const selectAllBtn = document.getElementById('select-all');
+            const deselectAllBtn = document.getElementById('deselect-all');
+            const previewBtn = document.getElementById('preview-print');
+            const generatePreviewBtn = document.getElementById('generate-preview');
+            const printBtn = document.getElementById('start-print');
+            const printPreview = document.getElementById('print-preview');
+            const printSection = document.getElementById('print-section');
+            const printBarcodeGrid = document.getElementById('print-barcode-grid');
+
+            let selectedProducts = [];
+
+            // تحديث قائمة المنتجات المختارة
+            function updateSelectedProductsList() {
+                if (selectedProducts.length === 0) {
+                    selectedProductsList.innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">لم يتم اختيار أي منتجات</p>
+                </div>
+            `;
+                    return;
+                }
+
+                selectedProductsList.innerHTML = selectedProducts.map(product => `
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                <div>
+                    <strong>${product.name}</strong>
+                    <small class="text-muted d-block">${product.barcode}</small>
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm remove-product" data-id="${product.id}">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `).join('');
+
+                // إضافة أحداث إزالة المنتج
+                document.querySelectorAll('.remove-product').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        const productId = this.dataset.id;
+                        selectedProducts = selectedProducts.filter(p => p.id !== productId);
+                        document.querySelector(`.product-checkbox[value="${productId}"]`).checked = false;
+                        updateSelectedProductsList();
+                    });
+                });
+            }
+
+            // معاينة الطباعة
+            function generatePrintPreview() {
+                if (selectedProducts.length === 0) {
+                    printPreview.innerHTML = `
+                <div class="alert alert-warning text-center">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    لم يتم اختيار أي منتجات للمعاينة
+                </div>
+            `;
+                    return;
+                }
+
+                const copiesCount = parseInt(document.getElementById('copies-count').value);
+                const showPrice = document.getElementById('show-price').checked;
+                const showSku = document.getElementById('show-sku').checked;
+                const showProductName = document.getElementById('show-product-name').checked;
+                const barcodeSize = document.getElementById('barcode-size').value;
+
+                let previewHTML = '<div class="barcode-grid">';
+
+                selectedProducts.forEach(product => {
+                    for (let i = 0; i < copiesCount; i++) {
+                        previewHTML += `
+                    <div class="barcode-item">
+                        ${showSku ? `<div class="barcode-sku">${product.sku}</div>` : ''}
+                        ${showProductName ? `<div class="barcode-label">${product.name}</div>` : ''}
+                        <svg class="barcode-svg" id="barcode-${product.id}-${i}"></svg>
+                        ${showPrice ? `<div class="barcode-price">${product.price} ر.س</div>` : ''}
+                    </div>
+                `;
+                    }
+                });
+
+                previewHTML += '</div>';
+                printPreview.innerHTML = previewHTML;
+
+                // توليد الباركود
+                selectedProducts.forEach(product => {
+                    for (let i = 0; i < copiesCount; i++) {
+                        try {
+                            JsBarcode(`#barcode-${product.id}-${i}`, product.barcode, {
+                                format: "CODE128",
+                                width: barcodeSize === 'small' ? 1 : barcodeSize === 'large' ? 3 : 2,
+                                height: barcodeSize === 'small' ? 30 : barcodeSize === 'large' ? 70 : 50,
+                                displayValue: false,
+                                background: "#ffffff",
+                                lineColor: "#000000"
+                            });
+                        } catch (error) {
+                            console.error('Error generating barcode:', error);
+                        }
+                    }
+                });
+            }
+
+            // إعداد الطباعة
+            function setupPrint() {
+                if (selectedProducts.length === 0) {
+                    alert('يرجى اختيار منتجات للطباعة');
+                    return;
+                }
+
+                const copiesCount = parseInt(document.getElementById('copies-count').value);
+                const showPrice = document.getElementById('show-price').checked;
+                const showSku = document.getElementById('show-sku').checked;
+                const showProductName = document.getElementById('show-product-name').checked;
+                const barcodeSize = document.getElementById('barcode-size').value;
+
+                let printHTML = '';
+
+                selectedProducts.forEach(product => {
+                    for (let i = 0; i < copiesCount; i++) {
+                        printHTML += `
+                    <div class="barcode-item">
+                        ${showSku ? `<div class="barcode-sku">${product.sku}</div>` : ''}
+                        ${showProductName ? `<div class="barcode-label">${product.name}</div>` : ''}
+                        <svg class="barcode-svg" id="print-barcode-${product.id}-${i}"></svg>
+                        ${showPrice ? `<div class="barcode-price">${product.price} ر.س</div>` : ''}
+                    </div>
+                `;
+                    }
+                });
+
+                printBarcodeGrid.innerHTML = printHTML;
+                printSection.classList.remove('d-none');
+
+                // توليد الباركود للطباعة
+                selectedProducts.forEach(product => {
+                    for (let i = 0; i < copiesCount; i++) {
+                        try {
+                            JsBarcode(`#print-barcode-${product.id}-${i}`, product.barcode, {
+                                format: "CODE128",
+                                width: barcodeSize === 'small' ? 1 : barcodeSize === 'large' ? 3 : 2,
+                                height: barcodeSize === 'small' ? 30 : barcodeSize === 'large' ? 70 : 50,
+                                displayValue: false,
+                                background: "#ffffff",
+                                lineColor: "#000000"
+                            });
+                        } catch (error) {
+                            console.error('Error generating barcode:', error);
+                        }
+                    }
+                });
+
+                // الطباعة
+                window.print();
+
+                // إعادة إخفاء قسم الطباعة
+                setTimeout(() => {
+                    printSection.classList.add('d-none');
+                }, 100);
+            }
+
+            // أحداث
+            productCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function () {
+                    if (this.checked) {
+                        selectedProducts.push({
+                            id: this.value,
+                            name: this.dataset.name,
+                            sku: this.dataset.sku,
+                            barcode: this.dataset.barcode,
+                            price: this.dataset.price
+                        });
+                    } else {
+                        selectedProducts = selectedProducts.filter(p => p.id !== this.value);
+                    }
+                    updateSelectedProductsList();
+                });
+            });
+
+            selectAllBtn.addEventListener('click', function () {
+                productCheckboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                    if (!selectedProducts.find(p => p.id === checkbox.value)) {
+                        selectedProducts.push({
+                            id: checkbox.value,
+                            name: checkbox.dataset.name,
+                            sku: checkbox.dataset.sku,
+                            barcode: checkbox.dataset.barcode,
+                            price: checkbox.dataset.price
+                        });
+                    }
+                });
+                updateSelectedProductsList();
+            });
+
+            deselectAllBtn.addEventListener('click', function () {
+                productCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                selectedProducts = [];
+                updateSelectedProductsList();
+            });
+
+            previewBtn.addEventListener('click', function () {
+                generatePrintPreview();
+            });
+
+            generatePreviewBtn.addEventListener('click', function () {
+                generatePrintPreview();
+            });
+
+            printBtn.addEventListener('click', setupPrint);
+
+            // البحث في المنتجات
+            productSearch.addEventListener('input', function () {
+                const searchTerm = this.value.toLowerCase();
+                const productRows = document.querySelectorAll('#product-selection-list tr');
+
+                productRows.forEach(row => {
+                    const productName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                    const productBarcode = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+
+                    if (productName.includes(searchTerm) || productBarcode.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+
+            // التهيئة الأولية
+            updateSelectedProductsList();
+        });
+    </script>
+{% endblock %}

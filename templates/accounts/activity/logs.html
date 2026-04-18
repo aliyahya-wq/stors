@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}سجل الأنشطة - نظام الإدارة{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="fas fa-history me-2"></i>سجل الأنشطة
+            </h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <button class="btn btn-outline-primary me-2" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel me-2"></i>تصدير Excel
+                </button>
+                <button class="btn btn-outline-danger" onclick="exportToPDF()">
+                    <i class="fas fa-file-pdf me-2"></i>تصدير PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="user" class="form-label">المستخدم</label>
+                        <select class="form-select" id="user" name="user">
+                            <option value="">جميع المستخدمين</option>
+                            {% for user in users %}
+                                <option value="{{ user.id }}"
+                                        {% if request.GET.user == user.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ user.first_name }} {{ user.last_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="action" class="form-label">الإجراء</label>
+                        <input type="text" class="form-control" id="action" name="action"
+                               value="{{ request.GET.action }}" placeholder="ابحث بالإجراء...">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="date_from" class="form-label">من تاريخ</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from"
+                               value="{{ request.GET.date_from }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="date_to" class="form-label">إلى تاريخ</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to"
+                               value="{{ request.GET.date_to }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter me-2"></i>تصفية
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Activities Table -->
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="activitiesTable">
+                        <thead>
+                        <tr>
+                            <th>المستخدم</th>
+                            <th>الإجراء</th>
+                            <th>النموذج</th>
+                            <th>معرف الكائن</th>
+                            <th>التفاصيل</th>
+                            <th>عنوان IP</th>
+                            <th>الوقت</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for activity in activities %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center"
+                                             style="width: 32px; height: 32px; font-size: 12px;">
+                                            {{ activity.user.first_name|first }}{{ activity.user.last_name|first }}
+                                        </div>
+                                        <div>
+                                            <small>{{ activity.user.first_name }} {{ activity.user.last_name }}</small>
+                                            <br>
+                                            <small class="text-muted">{{ activity.user.email }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                <span class="badge
+                                    {% if 'إنشاء' in activity.action %}bg-success
+                                    {% elif 'تحديث' in activity.action %}bg-primary
+                                    {% elif 'حذف' in activity.action %}bg-danger
+                                    {% elif 'دخول' in activity.action %}bg-info
+                                    {% elif 'خروج' in activity.action %}bg-warning
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ activity.action }}
+                                </span>
+                                </td>
+                                <td>{{ activity.model }}</td>
+                                <td>{{ activity.object_id }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                            data-bs-toggle="modal" data-bs-target="#detailsModal{{ activity.id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </td>
+                                <td>
+                                    <code>{{ activity.ip_address }}</code>
+                                </td>
+                                <td>{{ activity.timestamp|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'accounts:activity_detail' activity.id %}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-info-circle"></i>
+                                    </a>
+                                </td>
+                            </tr>
+
+                            <!-- Details Modal -->
+                            <div class="modal fade" id="detailsModal{{ activity.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">تفاصيل النشاط</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <pre><code>{{ activity.details|pprint }}</code></pre>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                إغلاق
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">لا توجد أنشطة مسجلة</p>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=
+                                            {{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">السابق</a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=
+                                                {{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=
+                                            {{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">التالي</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function exportToExcel() {
+            // Simple Excel export implementation
+            let table = document.getElementById('activitiesTable');
+            let html = table.outerHTML;
+            let url = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(html);
+            let downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = 'سجل_الأنشطة.xls';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+        function exportToPDF() {
+            alert('سيتم تطوير وظيفة تصدير PDF في المستقبل');
+            // You can integrate with libraries like jsPDF or make a server-side PDF generation
+        }
+    </script>
+
+    <style>
+        .avatar {
+            font-weight: bold;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+{% endblock %}

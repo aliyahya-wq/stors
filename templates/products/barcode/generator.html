@@ -1,0 +1,618 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}مولد الباركود - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .barcode-container {
+            background: white;
+            border: 2px solid #e3e6f0;
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .barcode-preview {
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .barcode-options {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .barcode-type-btn {
+            border: 2px solid #e3e6f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .barcode-type-btn:hover,
+        .barcode-type-btn.active {
+            border-color: var(--accent-color);
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        .barcode-type-btn i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .product-select-card {
+            border: 2px dashed #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .product-select-card:hover {
+            border-color: var(--accent-color);
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .barcode-svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .print-options {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">مولد الباركود</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:barcode_scanner' %}" class="btn btn-outline-info me-2">
+                <i class="bi bi-upc-scan"></i>
+                ماسح الباركود
+            </a>
+            <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- معاينة الباركود -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">معاينة الباركود</h5>
+                </div>
+                <div class="card-body">
+                    <div class="barcode-container">
+                        <div class="barcode-preview" id="barcode-preview">
+                            <div class="text-muted">
+                                <i class="bi bi-upc-scan" style="font-size: 4rem;"></i>
+                                <p class="mt-3">سيظهر الباركود هنا بعد التوليد</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="input-group mb-3">
+                                <span class="input-group-text">القيمة</span>
+                                <input type="text" class="form-control" id="barcode-value"
+                                       placeholder="أدخل قيمة الباركود" value="{{ product.barcode|default:'' }}">
+                                <button class="btn btn-outline-primary" type="button" id="generate-barcode">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                    توليد
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group mb-3">
+                                <span class="input-group-text">النص</span>
+                                <input type="text" class="form-control" id="barcode-text"
+                                       placeholder="النص الظاهر تحت الباركود" value="{{ product.name|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- خيارات الباركود -->
+                    <div class="barcode-options">
+                        <h6 class="mb-3">خيارات الباركود</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="barcode-width" class="form-label">العرض (px)</label>
+                                <input type="number" class="form-control" id="barcode-width" value="300" min="100"
+                                       max="800">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="barcode-height" class="form-label">الارتفاع (px)</label>
+                                <input type="number" class="form-control" id="barcode-height" value="150" min="50"
+                                       max="400">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="barcode-format" class="form-label">النوع</label>
+                                <select class="form-select" id="barcode-format">
+                                    <option value="CODE128">CODE128</option>
+                                    <option value="EAN13">EAN-13</option>
+                                    <option value="EAN8">EAN-8</option>
+                                    <option value="UPC">UPC</option>
+                                    <option value="CODE39">CODE39</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="show-text" checked>
+                            <label class="form-check-label" for="show-text">إظهار النص تحت الباركود</label>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="show-value" checked>
+                            <label class="form-check-label" for="show-value">إظهار قيمة الباركود</label>
+                        </div>
+                    </div>
+
+                    <!-- أزرار التحكم -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-secondary me-md-2" id="reset-barcode">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            إعادة تعيين
+                        </button>
+                        <button type="button" class="btn btn-success me-md-2" id="download-barcode">
+                            <i class="bi bi-download"></i>
+                            تحميل الصورة
+                        </button>
+                        <button type="button" class="btn btn-primary" id="print-barcode">
+                            <i class="bi bi-printer"></i>
+                            طباعة الباركود
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- خيارات الطباعة -->
+            <div class="card mt-4 d-none" id="print-options-card">
+                <div class="card-header">
+                    <h5 class="mb-0">خيارات الطباعة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="print-options">
+                        <h6><i class="bi bi-info-circle"></i> تعليمات الطباعة</h6>
+                        <p class="small mb-3">
+                            للطباعة المثالية، استخدم ورق ملصقات الباركود الخاص. تأكد من ضبط إعدادات الطابعة على الجودة
+                            العالية.
+                        </p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="print-copies" class="form-label">عدد النسخ</label>
+                            <input type="number" class="form-control" id="print-copies" value="1" min="1" max="100">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="print-size" class="form-label">حجم الباركود</label>
+                            <select class="form-select" id="print-size">
+                                <option value="small">صغير (40x20 ملم)</option>
+                                <option value="medium" selected>متوسط (60x30 ملم)</option>
+                                <option value="large">كبير (80x40 ملم)</option>
+                                <option value="custom">مخصص</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row d-none" id="custom-size-options">
+                        <div class="col-md-6 mb-3">
+                            <label for="custom-width" class="form-label">العرض (ملم)</label>
+                            <input type="number" class="form-control" id="custom-width" value="60">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="custom-height" class="form-label">الارتفاع (ملم)</label>
+                            <input type="number" class="form-control" id="custom-height" value="30">
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-success" id="confirm-print">
+                            <i class="bi bi-printer-fill"></i>
+                            تأكيد الطباعة
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- اختيار المنتج -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">اختيار المنتج</h6>
+                </div>
+                <div class="card-body">
+                    <div class="product-select-card" id="product-select-area">
+                        <i class="bi bi-box text-muted" style="font-size: 3rem;"></i>
+                        <h6 class="mt-2">اختر منتجاً</h6>
+                        <p class="text-muted small">اختر منتجاً من القائمة لملء بيانات الباركود تلقائياً</p>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#productModal">
+                            <i class="bi bi-search"></i>
+                            اختيار منتج
+                        </button>
+                    </div>
+
+                    <div id="selected-product-info" class="d-none">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    {% if product and product.main_image %}
+                                        <img src="{{ product.main_image.url }}" alt="{{ product.name }}"
+                                             class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                    {% endif %}
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1" id="selected-product-name">{{ product.name|default:'' }}</h6>
+                                        <p class="text-muted small mb-1" id="selected-product-sku">
+                                            {{ product.sku|default:'' }}
+                                        </p>
+                                        <p class="text-muted small mb-0" id="selected-product-barcode">
+                                            {{ product.barcode|default:'' }}
+                                        </p>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" id="clear-product">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- أنواع الباركود -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">أنواع الباركود</h6>
+                </div>
+                <div class="card-body">
+                    <div class="barcode-type-btn active" data-format="CODE128">
+                        <i class="bi bi-upc"></i>
+                        <div>CODE128</div>
+                        <small class="text-muted">الأكثر استخداماً</small>
+                    </div>
+
+                    <div class="barcode-type-btn" data-format="EAN13">
+                        <i class="bi bi-123"></i>
+                        <div>EAN-13</div>
+                        <small class="text-muted">13 رقم</small>
+                    </div>
+
+                    <div class="barcode-type-btn" data-format="EAN8">
+                        <i class="bi bi-123"></i>
+                        <div>EAN-8</div>
+                        <small class="text-muted">8 أرقام</small>
+                    </div>
+
+                    <div class="barcode-type-btn" data-format="UPC">
+                        <i class="bi bi-upc-scan"></i>
+                        <div>UPC</div>
+                        <small class="text-muted">12 رقم</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- نصائح -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">نصائح للباركود</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>CODE128</strong> هو الأفضل للمنتجات الداخلية
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>EAN-13</strong> للمنتجات المعروضة للبيع
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            تأكد من وضوح الباركود عند الطباعة
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            استخدم ألوان متباينة للخلفية والباركود
+                        </li>
+                        <li>
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            اختبر الباركود بالماسح قبل الطباعة الكمية
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal اختيار المنتج -->
+    <div class="modal fade" id="productModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">اختيار المنتج</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="ابحث عن المنتج..." id="product-search">
+                        <button class="btn btn-outline-primary" type="button">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-hover">
+                            <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>SKU</th>
+                                <th>الباركود</th>
+                                <th>اختيار</th>
+                            </tr>
+                            </thead>
+                            <tbody id="product-list">
+                            {% for product in products %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if product.main_image %}
+                                                <img src="{{ product.main_image.url }}" alt="{{ product.name }}"
+                                                     class="rounded me-2"
+                                                     style="width: 40px; height: 40px; object-fit: cover;">
+                                            {% endif %}
+                                            <div>{{ product.name }}</div>
+                                        </div>
+                                    </td>
+                                    <td>{{ product.sku }}</td>
+                                    <td>{{ product.barcode }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary select-product"
+                                                data-id="{{ product.id }}"
+                                                data-name="{{ product.name }}"
+                                                data-sku="{{ product.sku }}"
+                                                data-barcode="{{ product.barcode }}">
+                                            اختيار
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // عناصر DOM
+            const barcodePreview = document.getElementById('barcode-preview');
+            const barcodeValue = document.getElementById('barcode-value');
+            const barcodeText = document.getElementById('barcode-text');
+            const generateBtn = document.getElementById('generate-barcode');
+            const resetBtn = document.getElementById('reset-barcode');
+            const downloadBtn = document.getElementById('download-barcode');
+            const printBtn = document.getElementById('print-barcode');
+            const barcodeFormat = document.getElementById('barcode-format');
+            const barcodeWidth = document.getElementById('barcode-width');
+            const barcodeHeight = document.getElementById('barcode-height');
+            const showText = document.getElementById('show-text');
+            const showValue = document.getElementById('show-value');
+
+            // توليد الباركود
+            function generateBarcode() {
+                const value = barcodeValue.value.trim();
+                const text = barcodeText.value.trim();
+                const format = barcodeFormat.value;
+                const width = parseInt(barcodeWidth.value);
+                const height = parseInt(barcodeHeight.value);
+
+                if (!value) {
+                    alert('يرجى إدخال قيمة للباركود');
+                    return;
+                }
+
+                // مسح المعاينة السابقة
+                barcodePreview.innerHTML = '';
+
+                // إنشاء عنصر SVG للباركود
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.classList.add('barcode-svg');
+                barcodePreview.appendChild(svg);
+
+                try {
+                    // توليد الباركود
+                    JsBarcode(svg, value, {
+                        format: format,
+                        width: 2,
+                        height: height,
+                        displayValue: showValue.checked,
+                        text: showText.checked ? text : '',
+                        fontOptions: 'bold',
+                        font: 'Arial',
+                        textAlign: 'center',
+                        textPosition: 'bottom',
+                        textMargin: 5,
+                        fontSize: 16,
+                        background: '#ffffff',
+                        lineColor: '#000000',
+                        margin: 10
+                    });
+
+                    // ضبط العرض
+                    svg.style.width = width + 'px';
+
+                } catch (error) {
+                    barcodePreview.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    خطأ في توليد الباركود: ${error.message}
+                </div>
+            `;
+                }
+            }
+
+            // تحميل الباركود كصورة
+            function downloadBarcode() {
+                if (!barcodePreview.querySelector('svg')) {
+                    alert('يرجى توليد الباركود أولاً');
+                    return;
+                }
+
+                html2canvas(barcodePreview).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `barcode-${barcodeValue.value}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+            }
+
+            // إعادة التعيين
+            function resetBarcode() {
+                barcodeValue.value = '';
+                barcodeText.value = '';
+                barcodeWidth.value = 300;
+                barcodeHeight.value = 150;
+                barcodeFormat.value = 'CODE128';
+                showText.checked = true;
+                showValue.checked = true;
+                barcodePreview.innerHTML = `
+            <div class="text-muted">
+                <i class="bi bi-upc-scan" style="font-size: 4rem;"></i>
+                <p class="mt-3">سيظهر الباركود هنا بعد التوليد</p>
+            </div>
+        `;
+
+                // إعادة تعيين أنواع الباركود
+                document.querySelectorAll('.barcode-type-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector('.barcode-type-btn[data-format="CODE128"]').classList.add('active');
+            }
+
+            // أحداث
+            generateBtn.addEventListener('click', generateBarcode);
+            resetBtn.addEventListener('click', resetBarcode);
+            downloadBtn.addEventListener('click', downloadBarcode);
+            printBtn.addEventListener('click', function () {
+                document.getElementById('print-options-card').classList.remove('d-none');
+            });
+
+            // اختيار نوع الباركود
+            document.querySelectorAll('.barcode-type-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.barcode-type-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    barcodeFormat.value = this.dataset.format;
+                });
+            });
+
+            // اختيار المنتج
+            document.querySelectorAll('.select-product').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const productId = this.dataset.id;
+                    const productName = this.dataset.name;
+                    const productSku = this.dataset.sku;
+                    const productBarcode = this.dataset.barcode;
+
+                    // تحديث الحقول
+                    barcodeValue.value = productBarcode;
+                    barcodeText.value = productName;
+
+                    // تحديث عرض المنتج المختار
+                    document.getElementById('selected-product-name').textContent = productName;
+                    document.getElementById('selected-product-sku').textContent = productSku;
+                    document.getElementById('selected-product-barcode').textContent = productBarcode;
+                    document.getElementById('product-select-area').classList.add('d-none');
+                    document.getElementById('selected-product-info').classList.remove('d-none');
+
+                    // إغلاق المودال
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('productModal'));
+                    modal.hide();
+
+                    // توليد الباركود تلقائياً
+                    generateBarcode();
+                });
+            });
+
+            // مسح المنتج المختار
+            document.getElementById('clear-product').addEventListener('click', function () {
+                document.getElementById('product-select-area').classList.remove('d-none');
+                document.getElementById('selected-product-info').classList.add('d-none');
+                resetBarcode();
+            });
+
+            // البحث في المنتجات
+            document.getElementById('product-search').addEventListener('input', function () {
+                const searchTerm = this.value.toLowerCase();
+                const productRows = document.querySelectorAll('#product-list tr');
+
+                productRows.forEach(row => {
+                    const productName = row.querySelector('td:first-child').textContent.toLowerCase();
+                    const productSku = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+
+                    if (productName.includes(searchTerm) || productSku.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+
+            // خيارات الطباعة
+            document.getElementById('print-size').addEventListener('change', function () {
+                if (this.value === 'custom') {
+                    document.getElementById('custom-size-options').classList.remove('d-none');
+                } else {
+                    document.getElementById('custom-size-options').classList.add('d-none');
+                }
+            });
+
+            document.getElementById('confirm-print').addEventListener('click', function () {
+                const copies = document.getElementById('print-copies').value;
+                alert(`سيتم طباعة ${copies} نسخة من الباركود`);
+                // هنا يمكن إضافة منطق الطباعة الفعلي
+                window.print();
+            });
+
+            // التهيئة الأولية إذا كان هناك منتج محدد
+            {% if product %}
+                document.querySelector('.select-product[data-id="{{ product.id }}"]').click();
+            {% endif %}
+        });
+    </script>
+{% endblock %}

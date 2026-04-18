@@ -1,0 +1,437 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة المخزون - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .inventory-table th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .stock-low {
+            background: #f8d7da !important;
+        }
+
+        .stock-high {
+            background: #fff3cd !important;
+        }
+
+        .stock-normal {
+            background: #d1edff !important;
+        }
+
+        .stock-out {
+            background: #f8f9fa !important;
+        }
+
+        .filter-card {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .quick-actions .btn {
+            margin: 0.125rem;
+        }
+
+        .product-image {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 0.375rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">إدارة المخزون</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'inventory:movement_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    حركة جديدة
+                </a>
+                <a href="{% url 'inventory:transfers_list' %}" class="btn btn-outline-info">
+                    <i class="bi bi-arrow-left-right"></i>
+                    التحويلات
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-primary text-white">
+                <div class="card-body">
+                    <div class="number">{{ total_products }}</div>
+                    <div class="label">المنتجات</div>
+                    <i class="bi bi-box fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-success text-white">
+                <div class="card-body">
+                    <div class="number">{{ total_quantity }}</div>
+                    <div class="label">إجمالي الكمية</div>
+                    <i class="bi bi-box-arrow-in-down fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-warning text-white">
+                <div class="card-body">
+                    <div class="number">{{ low_stock_count }}</div>
+                    <div class="label">منخفضة المخزون</div>
+                    <i class="bi bi-exclamation-triangle fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-danger text-white">
+                <div class="card-body">
+                    <div class="number">{{ out_of_stock_count }}</div>
+                    <div class="label">منتهية المخزون</div>
+                    <i class="bi bi-x-circle fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-info text-white">
+                <div class="card-body">
+                    <div class="number">{{ total_value|floatformat:0 }}</div>
+                    <div class="label">القيمة الإجمالية</div>
+                    <i class="bi bi-currency-dollar fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="number">{{ warehouses.count }}</div>
+                    <div class="label">المخازن</div>
+                    <i class="bi bi-building fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">قائمة المخزون</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" id="export-btn">
+                            <i class="bi bi-download"></i> تصدير
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse"
+                                data-bs-target="#filtersCollapse">
+                            <i class="bi bi-funnel"></i> الفلترة
+                        </button>
+                    </div>
+                </div>
+
+                <!-- فلترة متقدمة -->
+                <div class="collapse" id="filtersCollapse">
+                    <div class="card-body border-bottom">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">المخزن</label>
+                                <select class="form-select" id="warehouseFilter">
+                                    <option value="">جميع المخازن</option>
+                                    {% for warehouse in warehouses %}
+                                        <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">التصنيف</label>
+                                <select class="form-select" id="categoryFilter">
+                                    <option value="">جميع التصنيفات</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category.id }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">حالة المخزون</label>
+                                <select class="form-select" id="stockStatusFilter">
+                                    <option value="">جميع الحالات</option>
+                                    <option value="low">منخفض</option>
+                                    <option value="normal">طبيعي</option>
+                                    <option value="high">مرتفع</option>
+                                    <option value="out">منتهي</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">بحث</label>
+                                <input type="text" class="form-control" id="searchFilter" placeholder="بحث بالمنتج...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover inventory-table" id="inventoryTable">
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>المنتج</th>
+                                <th>المخزن</th>
+                                <th>التصنيف</th>
+                                <th>الكمية</th>
+                                <th>الحد الأدنى</th>
+                                <th>الحد الأقصى</th>
+                                <th>الحالة</th>
+                                <th>القيمة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in inventory_items %}
+                                <tr class="{% if item.quantity <= 0 %}stock-out{% elif item.quantity <= item.product.min_stock %}stock-low{% elif item.quantity >= item.product.max_stock and item.product.max_stock > 0 %}stock-high{% else %}stock-normal{% endif %}">
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if item.product.main_image %}
+                                                <img src="{{ item.product.main_image.url }}"
+                                                     alt="{{ item.product.name }}"
+                                                     class="product-image me-2">
+                                            {% else %}
+                                                <div class="bg-light rounded d-flex align-items-center justify-content-center me-2 product-image">
+                                                    <i class="bi bi-image text-muted"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ item.product.name }}</strong>
+                                                <div class="small text-muted">{{ item.product.sku }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ item.warehouse.name }}</span>
+                                        {% if item.storage_location %}
+                                            <small class="text-muted d-block">{{ item.storage_location.get_location_code }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ item.product.category.name }}</span>
+                                    </td>
+                                    <td>
+                                        <strong class="{% if item.quantity <= 0 %}text-danger{% elif item.quantity <= item.product.min_stock %}text-danger{% elif item.quantity >= item.product.max_stock and item.product.max_stock > 0 %}text-warning{% else %}text-success{% endif %}">
+                                            {{ item.quantity }}
+                                        </strong>
+                                        <small class="text-muted">/ {{ item.product.unit.symbol }}</small>
+                                    </td>
+                                    <td>{{ item.product.min_stock }}</td>
+                                    <td>{{ item.product.max_stock }}</td>
+                                    <td>
+                                        {% if item.quantity <= 0 %}
+                                            <span class="badge bg-dark">منتهي</span>
+                                        {% elif item.quantity <= item.product.min_stock %}
+                                            <span class="badge bg-danger">منخفض</span>
+                                        {% elif item.quantity >= item.product.max_stock and item.product.max_stock > 0 %}
+                                            <span class="badge bg-warning">مرتفع</span>
+                                        {% else %}
+                                            <span class="badge bg-success">طبيعي</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ item.total_value|floatformat:2 }}</strong>
+                                        <small class="text-muted">ر.س</small>
+                                    </td>
+                                    <td>
+                                        <div class="quick-actions">
+                                            <a href="{% url 'inventory:inventory_detail' item.id %}"
+                                               class="btn btn-sm btn-outline-info" title="عرض التفاصيل">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{% url 'inventory:movement_create' %}?product={{ item.product.id }}&warehouse={{ item.warehouse.id }}"
+                                               class="btn btn-sm btn-outline-primary" title="حركة جديدة">
+                                                <i class="bi bi-arrow-left-right"></i>
+                                            </a>
+                                            <a href="{% url 'inventory:transfers_list' %}?from_warehouse={{ item.warehouse.id }}&product={{ item.product.id }}"
+                                               class="btn btn-sm btn-outline-warning" title="تحويل">
+                                                <i class="bi bi-arrow-repeat"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">
+                                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                                        <h5 class="text-muted mt-3">لا توجد عناصر في المخزون</h5>
+                                        <p class="text-muted">ابدأ بإضافة منتجات إلى المخازن</p>
+                                        <a href="{% url 'products:product_create' %}" class="btn btn-primary">
+                                            <i class="bi bi-plus-circle"></i>
+                                            إضافة منتج جديد
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- الترقيم -->
+                    {% if inventory_items.has_other_pages %}
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if inventory_items.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ inventory_items.previous_page_number }}">السابق</a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in inventory_items.paginator.page_range %}
+                                    {% if inventory_items.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if inventory_items.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link"
+                                           href="?page={{ inventory_items.next_page_number }}">التالي</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // فلترة الجدول
+            function filterTable() {
+                const warehouseFilter = document.getElementById('warehouseFilter').value.toLowerCase();
+                const categoryFilter = document.getElementById('categoryFilter').value.toLowerCase();
+                const stockStatusFilter = document.getElementById('stockStatusFilter').value;
+                const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+
+                const rows = document.querySelectorAll('#inventoryTable tbody tr');
+
+                rows.forEach(row => {
+                    const warehouse = row.cells[2].textContent.toLowerCase();
+                    const category = row.cells[3].textContent.toLowerCase();
+                    const status = row.cells[7].textContent.toLowerCase();
+                    const product = row.cells[1].textContent.toLowerCase();
+
+                    let show = true;
+
+                    if (warehouseFilter && !warehouse.includes(warehouseFilter)) {
+                        show = false;
+                    }
+
+                    if (categoryFilter && !category.includes(categoryFilter)) {
+                        show = false;
+                    }
+
+                    if (stockStatusFilter) {
+                        if (stockStatusFilter === 'low' && !status.includes('منخفض')) show = false;
+                        if (stockStatusFilter === 'normal' && !status.includes('طبيعي')) show = false;
+                        if (stockStatusFilter === 'high' && !status.includes('مرتفع')) show = false;
+                        if (stockStatusFilter === 'out' && !status.includes('منتهي')) show = false;
+                    }
+
+                    if (searchFilter && !product.includes(searchFilter)) {
+                        show = false;
+                    }
+
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+
+            // إضافة أحداث الفلترة
+            document.getElementById('warehouseFilter').addEventListener('change', filterTable);
+            document.getElementById('categoryFilter').addEventListener('change', filterTable);
+            document.getElementById('stockStatusFilter').addEventListener('change', filterTable);
+            document.getElementById('searchFilter').addEventListener('input', filterTable);
+
+            // تصدير البيانات
+            document.getElementById('export-btn').addEventListener('click', function () {
+                // محاكاة التصدير
+                showLoading('جارٍ تصدير البيانات...');
+                setTimeout(() => {
+                    alert('تم تصدير البيانات بنجاح');
+                }, 1500);
+            });
+
+            function showLoading(message) {
+                // محاكاة شاشة التحميل
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center';
+                loadingDiv.style.background = 'rgba(0,0,0,0.5)';
+                loadingDiv.style.zIndex = '9999';
+                loadingDiv.innerHTML = `
+            <div class="text-center text-white">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">جار التحميل...</span>
+                </div>
+                <p class="mt-2">${message}</p>
+            </div>
+        `;
+
+                document.body.appendChild(loadingDiv);
+                setTimeout(() => {
+                    document.body.removeChild(loadingDiv);
+                }, 1500);
+            }
+
+            // فرز الجدول
+            const table = document.getElementById('inventoryTable');
+            const headers = table.querySelectorAll('th');
+
+            headers.forEach((header, index) => {
+                if (index > 0 && index < headers.length - 1) { // استبعاد عمود # والإجراءات
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', () => {
+                        sortTable(index);
+                    });
+                }
+            });
+
+            function sortTable(columnIndex) {
+                const tbody = table.querySelector('tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                rows.sort((a, b) => {
+                    const aValue = a.cells[columnIndex].textContent.trim();
+                    const bValue = b.cells[columnIndex].textContent.trim();
+
+                    // محاولة التحويل إلى أرقام للكميات والقيم
+                    const aNum = parseFloat(aValue.replace(/[^\d.-]/g, ''));
+                    const bNum = parseFloat(bValue.replace(/[^\d.-]/g, ''));
+
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return aNum - bNum;
+                    }
+
+                    return aValue.localeCompare(bValue, 'ar');
+                });
+
+                // إعادة ترتيب الصفوف
+                rows.forEach(row => tbody.appendChild(row));
+            }
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تفاصيل النشاط - نظام الإدارة{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="fas fa-info-circle me-2"></i>تفاصيل النشاط
+            </h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <a href="{% url 'accounts:activity_logs' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-right me-2"></i>العودة للقائمة
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Activity Details -->
+            <div class="col-md-8">
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-history me-2"></i>معلومات النشاط
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">المستخدم</label>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center"
+                                             style="width: 40px; height: 40px;">
+                                            {{ activity.user.first_name|first }}{{ activity.user.last_name|first }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ activity.user.first_name }} {{ activity.user.last_name }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ activity.user.email }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">الإجراء</label>
+                                    <p>
+                                    <span class="badge 
+                                        {% if 'إنشاء' in activity.action %}bg-success
+                                        {% elif 'تحديث' in activity.action %}bg-primary
+                                        {% elif 'حذف' in activity.action %}bg-danger
+                                        {% elif 'دخول' in activity.action %}bg-info
+                                        {% elif 'خروج' in activity.action %}bg-warning
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ activity.action }}
+                                    </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">النموذج</label>
+                                    <p class="form-control-plaintext">{{ activity.model }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">معرف الكائن</label>
+                                    <p class="form-control-plaintext">{{ activity.object_id }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">عنوان IP</label>
+                                    <p class="form-control-plaintext">
+                                        <code>{{ activity.ip_address }}</code>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">الوقت</label>
+                                    <p class="form-control-plaintext">{{ activity.timestamp|date:"Y-m-d H:i:s" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Details JSON -->
+                <div class="card shadow">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-code me-2"></i>تفاصيل النشاط (JSON)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <pre><code id="jsonDetails">{{ activity.details|pprint }}</code></pre>
+                        <button class="btn btn-outline-primary btn-sm mt-2" onclick="copyToClipboard()">
+                            <i class="fas fa-copy me-2"></i>نسخ النص
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Information -->
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-user me-2"></i>معلومات المستخدم
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="avatar bg-primary text-white rounded-circle mx-auto d-flex align-items-center justify-content-center"
+                                 style="width: 80px; height: 80px; font-size: 24px;">
+                                {{ activity.user.first_name|first }}{{ activity.user.last_name|first }}
+                            </div>
+                            <h5 class="mt-3">{{ activity.user.first_name }} {{ activity.user.last_name }}</h5>
+                            <span class="badge badge-{{ activity.user.role.name }}">
+                            {{ activity.user.role.get_name_display }}
+                        </span>
+                        </div>
+
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>البريد الإلكتروني:</span>
+                                <span class="text-muted">{{ activity.user.email }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>رقم الهاتف:</span>
+                                <span class="text-muted">{{ activity.user.phone }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>القسم:</span>
+                                <span class="text-muted">{{ activity.user.department }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>الحالة:</span>
+                                <span class="text-muted">
+                                {% if activity.user.is_active %}
+                                    <span class="badge bg-success">نشط</span>
+                                {% else %}
+                                    <span class="badge bg-danger">معطل</span>
+                                {% endif %}
+                            </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            const jsonText = document.getElementById('jsonDetails').textContent;
+            navigator.clipboard.writeText(jsonText).then(function () {
+                // Show success message
+                const btn = event.target;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check me-2"></i>تم النسخ!';
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-outline-success');
+
+                setTimeout(function () {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('btn-outline-success');
+                    btn.classList.add('btn-outline-primary');
+                }, 2000);
+            });
+        }
+    </script>
+
+    <style>
+        .avatar {
+            font-weight: bold;
+        }
+
+        .badge-super_admin {
+            background-color: #e74c3c;
+        }
+
+        .badge-admin {
+            background-color: #3498db;
+        }
+
+        .badge-inventory_manager {
+            background-color: #f39c12;
+        }
+
+        .badge-purchase_manager {
+            background-color: #9b59b6;
+        }
+
+        .badge-sales_manager {
+            background-color: #27ae60;
+        }
+
+        .badge-viewer {
+            background-color: #95a5a6;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .form-control-plaintext {
+            padding: 0.375rem 0;
+            margin-bottom: 0;
+            line-height: 1.5;
+            background-color: transparent;
+            border: solid transparent;
+            border-width: 1px 0;
+        }
+    </style>
+{% endblock %}

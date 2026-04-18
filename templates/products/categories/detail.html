@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ category.name }} - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .category-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid #e3e6f0;
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .stats-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .stats-card .number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .subcategory-badge {
+            background-color: #e7f3ff;
+            color: #0066cc;
+            border: 1px solid #b3d9ff;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- رأس التصنيف -->
+    <div class="category-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center">
+                    {% if category.image %}
+                        <img src="{{ category.image.url }}" alt="{{ category.name }}"
+                             class="rounded me-4" style="width: 100px; height: 100px; object-fit: cover;">
+                    {% endif %}
+                    <div>
+                        <h1 class="h2 mb-2">{{ category.name }}</h1>
+                        {% if category.description %}
+                            <p class="mb-3">{{ category.description }}</p>
+                        {% endif %}
+                        <div class="d-flex flex-wrap gap-2">
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-tag me-1"></i>
+                            {{ category.get_category_type_display }}
+                        </span>
+                            {% if category.parent %}
+                                <span class="badge bg-light text-dark">
+                            <i class="bi bi-arrow-return-left me-1"></i>
+                            تابع لـ: {{ category.parent.name }}
+                        </span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">
+                            <i class="bi bi-star me-1"></i>
+                            تصنيف رئيسي
+                        </span>
+                            {% endif %}
+                            <span class="badge {% if category.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                            <i class="bi bi-circle-fill me-1"></i>
+                                {% if category.is_active %}نشط{% else %}غير نشط{% endif %}
+                        </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="btn-group">
+                    <a href="{% url 'products:category_update' category.id %}" class="btn btn-light">
+                        <i class="bi bi-pencil"></i>
+                        تعديل
+                    </a>
+                    <a href="{% url 'products:product_create' %}?category={{ category.id }}" class="btn btn-warning">
+                        <i class="bi bi-plus-lg"></i>
+                        إضافة منتج
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- الإحصائيات -->
+        <div class="col-lg-3">
+            <div class="stats-card card mb-4">
+                <div class="number text-primary">{{ category.products.count }}</div>
+                <div class="label">المنتجات</div>
+                <i class="bi bi-box text-primary opacity-25 mt-2" style="font-size: 2rem;"></i>
+            </div>
+
+            <div class="stats-card card mb-4">
+                <div class="number text-success">{{ subcategories.count }}</div>
+                <div class="label">التصنيفات الفرعية</div>
+                <i class="bi bi-folder text-success opacity-25 mt-2" style="font-size: 2rem;"></i>
+            </div>
+
+            <div class="stats-card card mb-4">
+                <div class="number text-info">{{ total_stock }}</div>
+                <div class="label">إجمالي المخزون</div>
+                <i class="bi bi-box-seam text-info opacity-25 mt-2" style="font-size: 2rem;"></i>
+            </div>
+
+            <div class="stats-card card">
+                <div class="number text-warning">{{ low_stock_count }}</div>
+                <div class="label">منتجات منخفضة المخزون</div>
+                <i class="bi bi-exclamation-triangle text-warning opacity-25 mt-2" style="font-size: 2rem;"></i>
+            </div>
+        </div>
+
+        <!-- المحتوى الرئيسي -->
+        <div class="col-lg-9">
+            <!-- التصنيفات الفرعية -->
+            {% if subcategories %}
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">التصنيفات الفرعية</h5>
+                        <a href="{% url 'products:category_create' %}?parent={{ category.id }}"
+                           class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-circle"></i>
+                            إضافة تصنيف فرعي
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for subcategory in subcategories %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-center mb-2">
+                                                {% if subcategory.image %}
+                                                    <img src="{{ subcategory.image.url }}" alt="{{ subcategory.name }}"
+                                                         class="rounded me-3"
+                                                         style="width: 40px; height: 40px; object-fit: cover;">
+                                                {% endif %}
+                                                <h6 class="mb-0">{{ subcategory.name }}</h6>
+                                            </div>
+                                            <p class="text-muted small mb-2">
+                                                {{ subcategory.products.count }} منتج
+                                            </p>
+                                            <div class="d-flex justify-content-between">
+                                                <a href="{% url 'products:category_detail' subcategory.id %}"
+                                                   class="btn btn-sm btn-outline-primary">عرض</a>
+                                                <span class="badge subcategory-badge">
+                                        {{ subcategory.get_category_type_display }}
+                                    </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- المنتجات -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">منتجات التصنيف</h5>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'products:product_create' %}?category={{ category.id }}"
+                           class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-lg"></i>
+                            إضافة منتج
+                        </a>
+                        <a href="{% url 'products:product_list' %}?category={{ category.id }}"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-list"></i>
+                            عرض الكل
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if products %}
+                        <div class="product-grid">
+                            {% for product in products %}
+                                <div class="product-card">
+                                    <div class="position-relative">
+                                        {% if product.main_image %}
+                                            <img src="{{ product.main_image.url }}" class="card-img-top"
+                                                 alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                                        {% else %}
+                                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                                                 style="height: 200px;">
+                                                <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                                            </div>
+                                        {% endif %}
+
+                                        <div class="position-absolute top-0 end-0 m-2">
+                                <span class="badge {% if product.get_stock_status == 'low' %}bg-danger{% elif product.get_stock_status == 'high' %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ product.get_total_stock }}
+                                </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ product.name }}</h6>
+                                        <p class="card-text text-muted small mb-2">
+                                            {{ product.sku }}
+                                        </p>
+
+                                        <div class="d-flex justify-content-between align-items-center">
+                                <span class="h6 text-success mb-0">
+                                    {{ product.selling_price }} ر.س
+                                </span>
+                                            {% if not product.is_active %}
+                                                <span class="badge bg-secondary">معطل</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="card-footer bg-transparent">
+                                        <div class="btn-group w-100">
+                                            <a href="{% url 'products:product_detail' product.id %}"
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{% url 'products:product_update' product.id %}"
+                                               class="btn btn-outline-warning btn-sm">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="{% url 'products:barcode_generator' %}?product={{ product.id }}"
+                                               class="btn btn-outline-info btn-sm">
+                                                <i class="bi bi-upc-scan"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- الترقيم -->
+                        {% if products.has_other_pages %}
+                            <nav aria-label="Page navigation" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if products.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link"
+                                               href="?page={{ products.previous_page_number }}">السابق</a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for num in products.paginator.page_range %}
+                                        {% if products.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if products.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ products.next_page_number }}">التالي</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-box text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="text-muted mt-3">لا توجد منتجات</h5>
+                            <p class="text-muted">لم يتم إضافة أي منتجات إلى هذا التصنيف بعد</p>
+                            <a href="{% url 'products:product_create' %}?category={{ category.id }}"
+                               class="btn btn-primary">
+                                <i class="bi bi-plus-lg"></i>
+                                إضافة منتج جديد
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- حركات المخزون الحديثة -->
+            {% if recent_movements %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">آخر حركات المخزون</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>نوع الحركة</th>
+                                    <th>الكمية</th>
+                                    <th>التاريخ</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for movement in recent_movements %}
+                                    <tr>
+                                        <td>{{ movement.product.name }}</td>
+                                        <td>
+                                    <span class="badge 
+                                        {% if movement.movement_type == 'purchase' %}bg-success
+                                        {% elif movement.movement_type == 'sale' %}bg-danger
+                                        {% else %}bg-info{% endif %}">
+                                        {{ movement.get_movement_type_display }}
+                                    </span>
+                                        </td>
+                                        <td class="{% if movement.quantity > 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {% if movement.quantity > 0 %}+{% endif %}{{ movement.quantity }}
+                                        </td>
+                                        <td>{{ movement.created_at|date:"Y/m/d H:i" }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

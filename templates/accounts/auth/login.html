@@ -1,0 +1,129 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block title %}تسجيل الدخول - نظام الإدارة{% endblock %}
+
+{% block auth_content %}
+    <div class="container">
+        <div class="row justify-content-center min-vh-100 align-items-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <!-- Header -->
+                        <div class="text-center mb-4">
+                            <div class="mb-3">
+                                <i class="fas fa-users-cog fa-3x text-primary"></i>
+                            </div>
+                            <h3 class="card-title">تسجيل الدخول</h3>
+                            <p class="text-muted">مرحباً بعودتك، يرجى تسجيل الدخول إلى حسابك</p>
+                        </div>
+
+                        <!-- Login Form -->
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <!-- Email Field -->
+                            <div class="mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">
+                                    <i class="fas fa-envelope me-2"></i>البريد الإلكتروني
+                                </label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.email.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Password Field -->
+                            <div class="mb-3">
+                                <label for="{{ form.password.id_for_label }}" class="form-label">
+                                    <i class="fas fa-lock me-2"></i>كلمة المرور
+                                </label>
+                                {{ form.password }}
+                                {% if form.password.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.password.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Remember Me -->
+                            <div class="mb-3 form-check">
+                                {{ form.remember_me }}
+                                <label class="form-check-label" for="{{ form.remember_me.id_for_label }}">
+                                    تذكرني
+                                </label>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>تسجيل الدخول
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Links -->
+                        <div class="text-center mt-4">
+                            <a href="{% url 'accounts:password_reset' %}" class="text-decoration-none">
+                                <i class="fas fa-key me-1"></i>نسيت كلمة المرور؟
+                            </a>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="text-center mt-4">
+                            <p class="text-muted">
+                                نظام إدارة المستخدمين والصلاحيات &copy; {% now "Y" %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .min-vh-100 {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .card {
+            border-radius: 15px;
+            border: none;
+        }
+
+        .form-control {
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+    </style>
+{% endblock %}

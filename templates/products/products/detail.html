@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ product.name }} - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .product-gallery img {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .product-gallery img:hover {
+            transform: scale(1.05);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">{{ product.name }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'products:product_update' product.id %}" class="btn btn-warning">
+                    <i class="bi bi-pencil"></i>
+                    تعديل
+                </a>
+                <a href="{% url 'products:barcode_generator' %}?product={{ product.id }}" class="btn btn-info">
+                    <i class="bi bi-upc-scan"></i>
+                    باركود
+                </a>
+            </div>
+            <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- المعلومات الأساسية -->
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    {% if product.main_image %}
+                        <img src="{{ product.main_image.url }}" alt="{{ product.name }}"
+                             class="img-fluid rounded" style="max-height: 300px;">
+                    {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                             style="height: 200px;">
+                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                        </div>
+                    {% endif %}
+
+                    <h4 class="mt-3">{{ product.name }}</h4>
+                    <p class="text-muted">{{ product.sku }}</p>
+
+                    <div class="d-grid gap-2">
+                    <span class="badge {% if product.get_stock_status == 'low' %}bg-danger{% elif product.get_stock_status == 'high' %}bg-warning{% else %}bg-success{% endif %} fs-6">
+                        {% if product.get_stock_status == 'low' %}منخفض المخزون
+                        {% elif product.get_stock_status == 'high' %}مرتفع المخزون
+                        {% else %}مخزون طبيعي{% endif %}
+                    </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- معلومات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">معلومات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>SKU:</strong></td>
+                            <td>{{ product.sku }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>الباركود:</strong></td>
+                            <td>{{ product.barcode }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>التصنيف:</strong></td>
+                            <td>{{ product.category.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>وحدة القياس:</strong></td>
+                            <td>{{ product.unit.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>الحالة:</strong></td>
+                            <td>
+                                {% if product.is_active %}
+                                    <span class="badge bg-success">نشط</span>
+                                {% else %}
+                                    <span class="badge bg-danger">معطل</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>تاريخ الإضافة:</strong></td>
+                            <td>{{ product.created_at|date:"Y/m/d" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- التفاصيل -->
+        <div class="col-lg-8">
+            <!-- الأسعار والمخزون -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted">سعر الشراء</h6>
+                            <h4 class="text-primary">{{ product.purchase_price }} ر.س</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted">سعر البيع</h6>
+                            <h4 class="text-success">{{ product.selling_price }} ر.س</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted">إجمالي المخزون</h6>
+                            <h4 class="{% if product.get_stock_status == 'low' %}text-danger{% elif product.get_stock_status == 'high' %}text-warning{% else %}text-info{% endif %}">
+                                {{ product.get_total_stock }} {{ product.unit.symbol }}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- المخزون في المخازن -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">المخزون في المخازن</h6>
+                </div>
+                <div class="card-body">
+                    {% if inventory_items %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                <tr>
+                                    <th>المخزن</th>
+                                    <th>الكمية</th>
+                                    <th>الموقع</th>
+                                    <th>الحالة</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for item in inventory_items %}
+                                    <tr>
+                                        <td>{{ item.warehouse.name }}</td>
+                                        <td>
+                                    <span class="fw-bold {% if item.quantity <= product.min_stock %}text-danger{% elif item.quantity >= product.max_stock %}text-warning{% else %}text-success{% endif %}">
+                                        {{ item.quantity }}
+                                    </span>
+                                            <small class="text-muted">/ {{ product.unit.symbol }}</small>
+                                        </td>
+                                        <td>{{ item.location|default:"-" }}</td>
+                                        <td>
+                                            {% if item.quantity <= product.min_stock %}
+                                                <span class="badge bg-danger">منخفض</span>
+                                            {% elif item.quantity >= product.max_stock and product.max_stock > 0 %}
+                                                <span class="badge bg-warning">مرتفع</span>
+                                            {% else %}
+                                                <span class="badge bg-success">طبيعي</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">لا يوجد مخزون في أي مخزن</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- الوصف -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">الوصف</h6>
+                </div>
+                <div class="card-body">
+                    {% if product.description %}
+                        <p>{{ product.description|linebreaks }}</p>
+                    {% else %}
+                        <p class="text-muted">لا يوجد وصف للمنتج</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- آخر الحركات -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">آخر حركات المخزون</h6>
+                </div>
+                <div class="card-body">
+                    {% if movements %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>نوع الحركة</th>
+                                    <th>المخزن</th>
+                                    <th>الكمية</th>
+                                    <th>المستخدم</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for movement in movements %}
+                                    <tr>
+                                        <td>{{ movement.created_at|date:"Y/m/d H:i" }}</td>
+                                        <td>
+                                    <span class="badge 
+                                        {% if movement.movement_type == 'purchase' %}bg-success
+                                        {% elif movement.movement_type == 'sale' %}bg-danger
+                                        {% else %}bg-info{% endif %}">
+                                        {{ movement.get_movement_type_display }}
+                                    </span>
+                                        </td>
+                                        <td>{{ movement.warehouse.name }}</td>
+                                        <td class="{% if movement.quantity > 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {% if movement.quantity > 0 %}+{% endif %}{{ movement.quantity }}
+                                        </td>
+                                        <td>{{ movement.created_by.get_full_name|default:movement.created_by.username }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">لا توجد حركات للمنتج</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة وحدات القياس - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .unit-card {
+            background: white;
+            border: 1px solid #e3e6f0;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .unit-card:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .unit-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .usage-badge {
+            background-color: #e7f3ff;
+            color: #0066cc;
+            border: 1px solid #b3d9ff;
+        }
+
+        .conversion-badge {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .units-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">إدارة وحدات القياس</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:unit_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>
+                إضافة وحدة جديدة
+            </a>
+        </div>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-primary">{{ total_units }}</div>
+                    <div class="label">إجمالي الوحدات</div>
+                    <i class="bi bi-rulers fs-1 text-primary opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-success">{{ active_units }}</div>
+                    <div class="label">الوحدات النشطة</div>
+                    <i class="bi bi-check-circle fs-1 text-success opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-info">{{ used_units }}</div>
+                    <div class="label">وحدات مستخدمة</div>
+                    <i class="bi bi-box-arrow-in-right fs-1 text-info opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-warning">{{ total_products }}</div>
+                    <div class="label">المنتجات المستخدمة</div>
+                    <i class="bi bi-box fs-1 text-warning opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">قائمة وحدات القياس</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="showInactive">
+                        <label class="form-check-label" for="showInactive">إظهار غير النشطة</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if units %}
+                        <div class="units-grid">
+                            {% for unit in units %}
+                                <div class="unit-card {% if not unit.is_active %}inactive{% endif %}">
+                                    <div class="unit-icon">
+                                        <i class="bi bi-rulers"></i>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h5 class="mb-1">{{ unit.name }}</h5>
+                                            <p class="text-muted mb-1">الرمز: <strong>{{ unit.symbol }}</strong></p>
+                                        </div>
+                                        <div class="text-end">
+                                            {% if not unit.is_active %}
+                                                <span class="badge bg-secondary">غير نشط</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                            <span class="badge conversion-badge">
+                                عامل التحويل: {{ unit.conversion_factor }}
+                            </span>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="usage-badge">
+                                <i class="bi bi-box"></i>
+                                {{ unit.product_set.count }} منتج
+                            </span>
+                                    </div>
+
+                                    <div class="btn-group w-100">
+                                        <a href="{% url 'products:unit_update' unit.id %}"
+                                           class="btn btn-outline-warning btn-sm">
+                                            <i class="bi bi-pencil"></i>
+                                            تعديل
+                                        </a>
+                                        {% if unit.product_set.count == 0 %}
+                                            <button type="button"
+                                                    class="btn btn-outline-danger btn-sm"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteModal{{ unit.id }}">
+                                                <i class="bi bi-trash"></i>
+                                                حذف
+                                            </button>
+                                        {% else %}
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary btn-sm"
+                                                    disabled
+                                                    title="لا يمكن حذف وحدة مستخدمة في المنتجات">
+                                                <i class="bi bi-trash"></i>
+                                                حذف
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Modal حذف الوحدة -->
+                                <div class="modal fade" id="deleteModal{{ unit.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">تأكيد الحذف</h5>
+                                                <button type="button" class="btn-close"
+                                                        data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>هل أنت متأكد من رغبتك في حذف وحدة القياس
+                                                    <strong>"{{ unit.name }}"</strong>؟</p>
+                                                <p class="text-danger">هذا الإجراء لا يمكن التراجع عنه.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    إلغاء
+                                                </button>
+                                                <form method="post" action="{% url 'products:unit_delete' unit.id %}"
+                                                      class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger">حذف</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-rulers text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="text-muted mt-3">لا توجد وحدات قياس</h5>
+                            <p class="text-muted">ابدأ بإضافة وحدات القياس التي ستستخدمها في منتجاتك</p>
+                            <a href="{% url 'products:unit_create' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i>
+                                إضافة وحدة جديدة
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- معلومات سريعة -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">معلومات عن وحدات القياس</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        وحدات القياس تستخدم لوصف كميات المنتجات في النظام. كل منتج يجب أن يكون مرتبطاً بوحدة قياس.
+                    </p>
+
+                    <div class="mt-3">
+                        <h6 class="text-primary">أنواع الوحدات الشائعة:</h6>
+                        <ul class="small mb-0">
+                            <li><strong>القطعة:</strong> للمنتجات المنفردة</li>
+                            <li><strong>الكيلوجرام:</strong> للمواد بالوزن</li>
+                            <li><strong>اللتر:</strong> للمواد السائلة</li>
+                            <li><strong>المتر:</strong> للمواد بالطول</li>
+                            <li><strong>الكرتونة/الصندوق:</strong> للعبوات</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- الوحدات الأكثر استخداماً -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">الوحدات الأكثر استخداماً</h6>
+                </div>
+                <div class="card-body">
+                    {% if most_used_units %}
+                        <div class="list-group list-group-flush">
+                            {% for unit in most_used_units %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ unit.name }}</strong>
+                                        <small class="text-muted d-block">{{ unit.symbol }}</small>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">{{ unit.product_count }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center small">لا توجد وحدات مستخدمة بعد</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'products:unit_create' %}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i>
+                            إضافة وحدة جديدة
+                        </a>
+                        <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-box"></i>
+                            عرض المنتجات
+                        </a>
+                        <a href="{% url 'products:product_create' %}" class="btn btn-outline-success">
+                            <i class="bi bi-plus-lg"></i>
+                            إضافة منتج جديد
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // تبديل إظهار/إخفاء الوحدات غير النشطة
+            const showInactiveCheckbox = document.getElementById('showInactive');
+            if (showInactiveCheckbox) {
+                showInactiveCheckbox.addEventListener('change', function () {
+                    const inactiveUnits = document.querySelectorAll('.unit-card.inactive');
+                    inactiveUnits.forEach(unit => {
+                        unit.style.display = this.checked ? 'block' : 'none';
+                    });
+                });
+            }
+
+            // البحث في الوحدات
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.placeholder = 'البحث في الوحدات...';
+            searchInput.className = 'form-control mb-3';
+
+            const cardHeader = document.querySelector('.card-header');
+            if (cardHeader) {
+                cardHeader.appendChild(searchInput);
+
+                searchInput.addEventListener('input', function () {
+                    const searchTerm = this.value.toLowerCase();
+                    const units = document.querySelectorAll('.unit-card');
+
+                    units.forEach(unit => {
+                        const unitName = unit.querySelector('h5').textContent.toLowerCase();
+                        const unitSymbol = unit.querySelector('strong').textContent.toLowerCase();
+
+                        if (unitName.includes(searchTerm) || unitSymbol.includes(searchTerm)) {
+                            unit.style.display = 'block';
+                        } else {
+                            unit.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+{% endblock %}

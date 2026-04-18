@@ -1,0 +1,421 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}قائمة المخازن - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .warehouse-card {
+            background: white;
+            border: 1px solid #e3e6f0;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .warehouse-card:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .warehouse-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .warehouse-card.main::before {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .warehouse-card.branch::before {
+            background: linear-gradient(135deg, #007bff, #6f42c1);
+        }
+
+        .warehouse-card.future::before {
+            background: linear-gradient(135deg, #6c757d, #adb5bd);
+        }
+
+        .warehouse-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .warehouse-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-left: 1rem;
+        }
+
+        .warehouse-icon.main {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .warehouse-icon.branch {
+            background: linear-gradient(135deg, #007bff, #6f42c1);
+        }
+
+        .warehouse-icon.future {
+            background: linear-gradient(135deg, #6c757d, #adb5bd);
+        }
+
+        .capacity-bar {
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .capacity-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .capacity-low {
+            background-color: var(--success-color);
+        }
+
+        .capacity-medium {
+            background-color: var(--warning-color);
+        }
+
+        .capacity-high {
+            background-color: var(--danger-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">إدارة المخازن</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:warehouse_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>
+                إضافة مخزن جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-primary">{{ total_warehouses }}</div>
+                    <div class="label">إجمالي المخازن</div>
+                    <i class="bi bi-building fs-1 text-primary opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-success">{{ active_warehouses }}</div>
+                    <div class="label">المخازن النشطة</div>
+                    <i class="bi bi-check-circle fs-1 text-success opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-info">{{ total_capacity|floatformat:0 }}</div>
+                    <div class="label">السعة الإجمالية</div>
+                    <i class="bi bi-box-seam fs-1 text-info opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-warning">{{ used_capacity|floatformat:0 }}</div>
+                    <div class="label">السعة المستخدمة</div>
+                    <i class="bi bi-box-arrow-in-down fs-1 text-warning opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">قائمة المخازن</h5>
+                    <div class="d-flex gap-2">
+                        <input type="text" class="form-control form-control-sm" id="searchInput"
+                               placeholder="بحث في المخازن...">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="showInactive">
+                            <label class="form-check-label" for="showInactive">إظهار غير النشطة</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if warehouses %}
+                        <div class="row">
+                            {% for warehouse in warehouses %}
+                                <div class="col-lg-6 mb-4">
+                                    <div class="warehouse-card {{ warehouse.warehouse_type }} {% if not warehouse.is_active %}inactive{% endif %}">
+                                        <div class="warehouse-header">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="warehouse-icon {{ warehouse.warehouse_type }}">
+                                                        <i class="bi bi-building"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h5 class="mb-1">{{ warehouse.name }}</h5>
+                                                        <p class="text-muted mb-1">
+                                                            <i class="bi bi-geo-alt"></i>
+                                                            {{ warehouse.address|truncatewords:5 }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                        <span class="badge
+                                            {% if warehouse.warehouse_type == 'main' %}bg-success
+                                            {% elif warehouse.warehouse_type == 'branch' %}bg-primary
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ warehouse.get_warehouse_type_display }}
+                                        </span>
+                                            {% if not warehouse.is_active %}
+                                                <span class="badge bg-secondary">غير نشط</span>
+                                            {% endif %}
+                                            <span class="badge bg-light text-dark">
+                                            {{ warehouse.code }}
+                                        </span>
+                                        </div>
+
+                                        <!-- شريط السعة -->
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <small class="text-muted">استخدام السعة</small>
+                                                <small class="text-muted">
+                                                    {{ warehouse.get_used_capacity|floatformat:0 }}
+                                                    / {{ warehouse.capacity }}
+                                                </small>
+                                            </div>
+                                            <div class="capacity-bar">
+                                                <div class="capacity-fill
+                                                {% if warehouse.get_usage_percentage < 50 %}capacity-low
+                                                {% elif warehouse.get_usage_percentage < 80 %}capacity-medium
+                                                {% else %}capacity-high{% endif %}"
+                                                     style="width: {{ warehouse.get_usage_percentage }}%">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- إحصائيات سريعة -->
+                                        <div class="stats-grid">
+                                            <div class="stat-item">
+                                                <div class="stat-number">{{ warehouse.get_products_count }}</div>
+                                                <div class="stat-label">المنتجات</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-number">{{ warehouse.get_total_quantity }}</div>
+                                                <div class="stat-label">الكمية</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-number">{{ warehouse.get_low_stock_count }}</div>
+                                                <div class="stat-label">منخفضة</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-number">{{ warehouse.manager.get_full_name|default:warehouse.manager.username|default:"-" }}</div>
+                                                <div class="stat-label">المدير</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="btn-group w-100 mt-3">
+                                            <a href="{% url 'inventory:warehouse_detail' warehouse.id %}"
+                                               class="btn btn-outline-info btn-sm">
+                                                <i class="bi bi-eye"></i>
+                                                عرض
+                                            </a>
+                                            <a href="{% url 'inventory:warehouse_update' warehouse.id %}"
+                                               class="btn btn-outline-warning btn-sm">
+                                                <i class="bi bi-pencil"></i>
+                                                تعديل
+                                            </a>
+                                            <a href="{% url 'inventory:transfers_list' %}?from_warehouse={{ warehouse.id }}"
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-arrow-left-right"></i>
+                                                تحويل
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-building text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="text-muted mt-3">لا توجد مخازن</h5>
+                            <p class="text-muted">ابدأ بإضافة المخازن التي ستستخدمها في نظام المخزون</p>
+                            <a href="{% url 'inventory:warehouse_create' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i>
+                                إضافة مخزن جديد
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- توزيع المخازن -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">توزيع المخازن</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for type in warehouse_types %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="bi bi-building me-2"></i>
+                                {{ type.name }}
+                            </span>
+                                <span class="badge bg-primary rounded-pill">{{ type.count }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- المخازن الأكثر استخداماً -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">المخازن الأكثر استخداماً</h6>
+                </div>
+                <div class="card-body">
+                    {% if most_used_warehouses %}
+                        <div class="list-group list-group-flush">
+                            {% for warehouse in most_used_warehouses %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ warehouse.name }}</strong>
+                                        <small class="text-muted d-block">{{ warehouse.get_products_count }}
+                                            منتج</small>
+                                    </div>
+                                    <span class="badge bg-success rounded-pill">
+                                    {{ warehouse.get_total_quantity }}
+                                </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center small">لا توجد بيانات استخدام بعد</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'inventory:warehouse_create' %}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i>
+                            إضافة مخزن جديد
+                        </a>
+                        <a href="{% url 'inventory:transfers_list' %}" class="btn btn-outline-info">
+                            <i class="bi bi-arrow-left-right"></i>
+                            تحويل بين المخازن
+                        </a>
+                        <a href="{% url 'inventory:warehouse_locations' %}" class="btn btn-outline-warning">
+                            <i class="bi bi-map"></i>
+                            عرض الخرائط
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // تبديل إظهار/إخفاء المخازن غير النشطة
+            const showInactiveCheckbox = document.getElementById('showInactive');
+            if (showInactiveCheckbox) {
+                showInactiveCheckbox.addEventListener('change', function () {
+                    const inactiveWarehouses = document.querySelectorAll('.warehouse-card.inactive');
+                    inactiveWarehouses.forEach(warehouse => {
+                        warehouse.style.display = this.checked ? 'block' : 'none';
+                    });
+                });
+            }
+
+            // البحث في المخازن
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    const searchTerm = this.value.toLowerCase();
+                    const warehouses = document.querySelectorAll('.warehouse-card');
+
+                    warehouses.forEach(warehouse => {
+                        const warehouseName = warehouse.querySelector('h5').textContent.toLowerCase();
+                        const warehouseAddress = warehouse.querySelector('.text-muted').textContent.toLowerCase();
+                        const warehouseCode = warehouse.querySelector('.badge.bg-light').textContent.toLowerCase();
+
+                        if (warehouseName.includes(searchTerm) || warehouseAddress.includes(searchTerm) || warehouseCode.includes(searchTerm)) {
+                            warehouse.style.display = 'block';
+                        } else {
+                            warehouse.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+{% endblock %}

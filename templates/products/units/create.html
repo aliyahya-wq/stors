@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إضافة وحدة قياس جديدة - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .example-table {
+            font-size: 0.875rem;
+        }
+
+        .example-table th {
+            background-color: #e9ecef;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">إضافة وحدة قياس جديدة</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:unit_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">معلومات الوحدة</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="unit-form">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">اسم الوحدة *</label>
+                                {{ form.name }}
+                                <div class="form-text">اسم واضح ومفهوم للوحدة (مثال: كيلوجرام، لتر، قطعة)</div>
+                                {% if form.name.errors %}
+                                    <div class="text-danger small">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.symbol.id_for_label }}" class="form-label">الرمز *</label>
+                                {{ form.symbol }}
+                                <div class="form-text">رمز مختصر للوحدة (مثال: كجم، ل، قطعة)</div>
+                                {% if form.symbol.errors %}
+                                    <div class="text-danger small">{{ form.symbol.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.conversion_factor.id_for_label }}" class="form-label">عامل
+                                التحويل</label>
+                            {{ form.conversion_factor }}
+                            <div class="form-text">
+                                يستخدم لتحويل الوحدة إلى الوحدة الأساسية. القيمة الافتراضية هي 1.0
+                            </div>
+                            {% if form.conversion_factor.errors %}
+                                <div class="text-danger small">{{ form.conversion_factor.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    وحدة نشطة
+                                </label>
+                            </div>
+                            <div class="form-text">الوحدات غير النشطة لن تظهر في القوائم المنسدلة عند إضافة منتجات
+                                جديدة
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'products:unit_list' %}" class="btn btn-outline-secondary me-md-2">
+                                إلغاء
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i>
+                                حفظ الوحدة
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- معلومات عن عوامل التحويل -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">معلومات عن عوامل التحويل</h6>
+                </div>
+                <div class="card-body">
+                    <div class="info-card">
+                        <h6>كيف تعمل عوامل التحويل؟</h6>
+                        <p class="small text-muted mb-3">
+                            عوامل التحويل تسمح لك بتحويل بين وحدات القياس المختلفة. على سبيل المثال:
+                        </p>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm example-table">
+                                <thead>
+                                <tr>
+                                    <th>الوحدة</th>
+                                    <th>الرمز</th>
+                                    <th>عامل التحويل</th>
+                                    <th>التفسير</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>جرام</td>
+                                    <td>جم</td>
+                                    <td>0.001</td>
+                                    <td>1000 جرام = 1 كيلوجرام</td>
+                                </tr>
+                                <tr>
+                                    <td>كيلوجرام</td>
+                                    <td>كجم</td>
+                                    <td>1.0</td>
+                                    <td>الوحدة الأساسية</td>
+                                </tr>
+                                <tr>
+                                    <td>طن</td>
+                                    <td>طن</td>
+                                    <td>1000</td>
+                                    <td>1 طن = 1000 كيلوجرام</td>
+                                </tr>
+                                <tr>
+                                    <td>ملليلتر</td>
+                                    <td>مل</td>
+                                    <td>0.001</td>
+                                    <td>1000 ملليلتر = 1 لتر</td>
+                                </tr>
+                                <tr>
+                                    <td>لتر</td>
+                                    <td>ل</td>
+                                    <td>1.0</td>
+                                    <td>الوحدة الأساسية</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-lightbulb"></i>
+                        <strong>نصيحة:</strong> عادةً ما يتم تعيين الوحدة الأساسية لكل نوع بعامل تحويل 1.0،
+                        وتكون الوحدات الأخرى نسبية لها.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- الوحدات الحالية -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">الوحدات الحالية</h6>
+                </div>
+                <div class="card-body">
+                    {% if existing_units %}
+                        <div class="list-group list-group-flush">
+                            {% for unit in existing_units %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ unit.name }}</strong>
+                                        <small class="text-muted d-block">{{ unit.symbol }}</small>
+                                    </div>
+                                    <span class="badge bg-light text-dark">{{ unit.conversion_factor }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center small">لا توجد وحدات مضافة بعد</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- نصائح -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">نصائح لإدارة الوحدات</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>استخدم أسماء واضحة:</strong> اختر أسماء تصف الوحدة بدقة
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>الرموز المختصرة:</strong> استخدم رموزاً مختصرة وسهلة التذكر
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>التخطيط المسبق:</strong> خطط لهيكل الوحدات قبل البدء في إضافة المنتجات
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>عوامل التحويل:</strong> حدد الوحدة الأساسية واضبط العوامل النسبية لها
+                        </li>
+                        <li>
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>عدم الحذف:</strong> تجنب حذف الوحدات المستخدمة في المنتجات
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- إحصائيات -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات الوحدات</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="h4 text-primary">{{ total_units }}</div>
+                        <div class="text-muted">إجمالي الوحدات</div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">التوزيع:</small>
+                        <div class="d-flex justify-content-between small mt-1">
+                            <span>نشطة</span>
+                            <span class="text-success">{{ active_units }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small mt-1">
+                            <span>مستخدمة</span>
+                            <span class="text-info">{{ used_units }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // التحقق من صحة النموذج
+            const unitForm = document.getElementById('unit-form');
+            if (unitForm) {
+                unitForm.addEventListener('submit', function (e) {
+                    const nameInput = document.getElementById('id_name');
+                    const symbolInput = document.getElementById('id_symbol');
+                    const conversionInput = document.getElementById('id_conversion_factor');
+
+                    let isValid = true;
+
+                    // التحقق من الاسم
+                    if (!nameInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال اسم الوحدة');
+                        nameInput.focus();
+                    }
+                    // التحقق من الرمز
+                    else if (!symbolInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال رمز الوحدة');
+                        symbolInput.focus();
+                    }
+                    // التحقق من عامل التحويل
+                    else if (!conversionInput.value || parseFloat(conversionInput.value) <= 0) {
+                        isValid = false;
+                        alert('عامل التحويل يجب أن يكون رقم موجب');
+                        conversionInput.focus();
+                    }
+
+                    if (!isValid) {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    return true;
+                });
+            }
+
+            // تعبئة تلقائية للرمز بناءً على الاسم
+            const nameInput = document.getElementById('id_name');
+            const symbolInput = document.getElementById('id_symbol');
+
+            if (nameInput && symbolInput) {
+                nameInput.addEventListener('blur', function () {
+                    if (!symbolInput.value.trim()) {
+                        // اقتراح رمز بناءً على الاسم
+                        const name = this.value.trim();
+                        let suggestedSymbol = '';
+
+                        if (name.includes('كيلو') || name.includes('كيلوجرام')) {
+                            suggestedSymbol = 'كجم';
+                        } else if (name.includes('جرام')) {
+                            suggestedSymbol = 'جم';
+                        } else if (name.includes('لتر')) {
+                            suggestedSymbol = 'ل';
+                        } else if (name.includes('ملليلتر')) {
+                            suggestedSymbol = 'مل';
+                        } else if (name.includes('متر')) {
+                            suggestedSymbol = 'م';
+                        } else if (name.includes('سنتيمتر')) {
+                            suggestedSymbol = 'سم';
+                        } else if (name.includes('قطعة')) {
+                            suggestedSymbol = 'قطعة';
+                        } else if (name.includes('علبة')) {
+                            suggestedSymbol = 'علبة';
+                        } else if (name.includes('كرتون')) {
+                            suggestedSymbol = 'كرتون';
+                        } else {
+                            // أخذ أول حرفين من الاسم
+                            suggestedSymbol = name.substring(0, 2);
+                        }
+
+                        symbolInput.value = suggestedSymbol;
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}

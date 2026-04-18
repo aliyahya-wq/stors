@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}بحث متقدم في المنتجات - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .search-filters {
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+
+        .search-results-count {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .product-card {
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .stock-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 0.5rem;
+        }
+
+        .stock-low {
+            background-color: var(--danger-color);
+        }
+
+        .stock-normal {
+            background-color: var(--success-color);
+        }
+
+        .stock-high {
+            background-color: var(--warning-color);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">بحث متقدم في المنتجات</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- الفلترة -->
+        <div class="col-lg-3">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">فلاتر البحث</h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="search-form">
+                        <!-- البحث النصي -->
+                        <div class="mb-3">
+                            <label class="form-label">كلمة البحث</label>
+                            <input type="text" name="q" class="form-control"
+                                   value="{{ request.GET.q }}" placeholder="ابحث بالاسم، SKU، أو الوصف...">
+                        </div>
+
+                        <!-- التصنيف -->
+                        <div class="mb-3">
+                            <label class="form-label">التصنيف</label>
+                            <select name="category" class="form-select">
+                                <option value="">جميع التصنيفات</option>
+                                {% for category in categories %}
+                                    <option value="{{ category.id }}"
+                                            {% if request.GET.category == category.id|stringformat:"i" %}selected{% endif %}>
+                                        {{ category.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- المخزن -->
+                        <div class="mb-3">
+                            <label class="form-label">المخزن</label>
+                            <select name="warehouse" class="form-select">
+                                <option value="">جميع المخازن</option>
+                                {% for warehouse in warehouses %}
+                                    <option value="{{ warehouse.id }}"
+                                            {% if request.GET.warehouse == warehouse.id|stringformat:"i" %}selected{% endif %}>
+                                        {{ warehouse.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- حالة المخزون -->
+                        <div class="mb-3">
+                            <label class="form-label">حالة المخزون</label>
+                            <select name="stock_status" class="form-select">
+                                <option value="">جميع الحالات</option>
+                                <option value="low" {% if request.GET.stock_status == 'low' %}selected{% endif %}>
+                                    منخفض المخزون
+                                </option>
+                                <option value="normal" {% if request.GET.stock_status == 'normal' %}selected{% endif %}>
+                                    مخزون طبيعي
+                                </option>
+                                <option value="high" {% if request.GET.stock_status == 'high' %}selected{% endif %}>
+                                    مرتفع المخزون
+                                </option>
+                                <option value="out" {% if request.GET.stock_status == 'out' %}selected{% endif %}>
+                                    غير متوفر
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- نطاق السعر -->
+                        <div class="mb-3">
+                            <label class="form-label">نطاق سعر البيع</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="number" name="min_price" class="form-control"
+                                           value="{{ request.GET.min_price }}" placeholder="الحد الأدنى">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" name="max_price" class="form-control"
+                                           value="{{ request.GET.max_price }}" placeholder="الحد الأقصى">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- الحالة -->
+                        <div class="mb-3">
+                            <label class="form-label">حالة المنتج</label>
+                            <select name="is_active" class="form-select">
+                                <option value="">الكل</option>
+                                <option value="true" {% if request.GET.is_active == 'true' %}selected{% endif %}>
+                                    نشط فقط
+                                </option>
+                                <option value="false" {% if request.GET.is_active == 'false' %}selected{% endif %}>
+                                    معطل فقط
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- الترتيب -->
+                        <div class="mb-3">
+                            <label class="form-label">ترتيب النتائج</label>
+                            <select name="sort" class="form-select">
+                                <option value="name" {% if request.GET.sort == 'name' %}selected{% endif %}>
+                                    حسب الاسم
+                                </option>
+                                <option value="sku" {% if request.GET.sort == 'sku' %}selected{% endif %}>
+                                    حسب SKU
+                                </option>
+                                <option value="selling_price"
+                                        {% if request.GET.sort == 'selling_price' %}selected{% endif %}>
+                                    حسب السعر (منخفض إلى مرتفع)
+                                </option>
+                                <option value="-selling_price"
+                                        {% if request.GET.sort == '-selling_price' %}selected{% endif %}>
+                                    حسب السعر (مرتفع إلى منخفض)
+                                </option>
+                                <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>
+                                    الأقدم
+                                </option>
+                                <option value="-created_at"
+                                        {% if request.GET.sort == '-created_at' %}selected{% endif %}>
+                                    الأحدث
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i>
+                                بحث
+                            </button>
+                            <a href="{% url 'products:search' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                إعادة تعيين
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- نتائج سريعة -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="h4 text-primary">{{ products.paginator.count }}</div>
+                        <div class="text-muted">منتج في النتائج</div>
+                    </div>
+
+                    {% if request.GET %}
+                        <div class="mt-3">
+                            <h6 class="text-muted">الفلاتر المطبقة:</h6>
+                            <div class="small">
+                                {% for key, value in request.GET.items %}
+                                    {% if value and key != 'page' and key != 'sort' %}
+                                        <span class="badge bg-secondary mb-1">{{ key }}: {{ value }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- نتائج البحث -->
+        <div class="col-lg-9">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">نتائج البحث</h5>
+                    <div class="search-results-count">
+                        عرض {{ products.start_index }} - {{ products.end_index }} من {{ products.paginator.count }}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if products %}
+                        <div class="row">
+                            {% for product in products %}
+                                <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
+                                    <div class="card product-card h-100">
+                                        <div class="position-relative">
+                                            {% if product.main_image %}
+                                                <img src="{{ product.main_image.url }}" class="card-img-top"
+                                                     alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                                                     style="height: 200px;">
+                                                    <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                                                </div>
+                                            {% endif %}
+
+                                            <div class="position-absolute top-0 end-0 m-2">
+                                    <span class="badge {% if product.get_stock_status == 'low' %}bg-danger{% elif product.get_stock_status == 'high' %}bg-warning{% else %}bg-success{% endif %}">
+                                        {{ product.get_total_stock }} {{ product.unit.symbol }}
+                                    </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ product.name }}</h6>
+                                            <p class="card-text text-muted small">
+                                                {{ product.description|truncatewords:10 }}
+                                            </p>
+
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <small class="text-muted">{{ product.sku }}</small>
+                                                <small class="text-muted">{{ product.category.name }}</small>
+                                            </div>
+
+                                            <div class="d-flex justify-content-between align-items-center">
+                                    <span class="h6 text-success mb-0">
+                                        {{ product.selling_price }} ر.س
+                                    </span>
+                                                {% if not product.is_active %}
+                                                    <span class="badge bg-danger">معطل</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="card-footer bg-transparent">
+                                            <div class="btn-group w-100">
+                                                <a href="{% url 'products:product_detail' product.id %}"
+                                                   class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="{% url 'products:product_update' product.id %}"
+                                                   class="btn btn-outline-warning btn-sm">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a href="{% url 'products:barcode_generator' %}?product={{ product.id }}"
+                                                   class="btn btn-outline-info btn-sm">
+                                                    <i class="bi bi-upc-scan"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- الترقيم -->
+                        {% if products.has_other_pages %}
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-center">
+                                    {% if products.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?
+                                                    {% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ products.previous_page_number }}">
+                                                السابق
+                                            </a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for num in products.paginator.page_range %}
+                                        {% if products.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?
+                                                        {% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">
+                                                    {{ num }}
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if products.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?
+                                                    {% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ products.next_page_number }}">
+                                                التالي
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-search text-muted" style="font-size: 4rem;"></i>
+                            <h4 class="text-muted mt-3">لا توجد نتائج</h4>
+                            <p class="text-muted">لم نعثر على أي منتج يتطابق مع معايير البحث الخاصة بك</p>
+                            <a href="{% url 'products:search' %}" class="btn btn-primary">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                إعادة تعيين البحث
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- تصدير النتائج -->
+            {% if products %}
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">تصدير نتائج البحث</h6>
+                                <p class="text-muted small mb-0">قم بتحميل نتائج البحث بصيغة Excel</p>
+                            </div>
+                            <a href="{% url 'products:export_products' %}?{{ request.GET.urlencode }}"
+                               class="btn btn-success">
+                                <i class="bi bi-download"></i>
+                                تصدير إلى Excel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // البحث في الوقت الحقيقي
+            const searchInput = document.querySelector('input[name="q"]');
+            const searchForm = document.getElementById('search-form');
+
+            if (searchInput && searchForm) {
+                let searchTimeout;
+
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        searchForm.submit();
+                    }, 500);
+                });
+            }
+
+            // تحديث الفلترة تلقائياً
+            const filterSelects = document.querySelectorAll('select[name="category"], select[name="warehouse"], select[name="stock_status"], select[name="is_active"], select[name="sort"]');
+            filterSelects.forEach(select => {
+                select.addEventListener('change', function () {
+                    searchForm.submit();
+                });
+            });
+
+            // تحديث نطاق السعر عند الضغط على Enter
+            const priceInputs = document.querySelectorAll('input[name="min_price"], input[name="max_price"]');
+            priceInputs.forEach(input => {
+                input.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        searchForm.submit();
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

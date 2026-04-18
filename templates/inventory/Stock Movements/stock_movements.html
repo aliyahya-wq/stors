@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}حركات المخزون - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .movement-card {
+            border-left: 4px solid #007bff;
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .movement-in {
+            border-left-color: #28a745;
+        }
+
+        .movement-out {
+            border-left-color: #dc3545;
+        }
+
+        .movement-transfer {
+            border-left-color: #ffc107;
+        }
+
+        .movement-adjustment {
+            border-left-color: #6f42c1;
+        }
+
+        .stats-card {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">حركات المخزون</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:movement_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>
+                حركة جديدة
+            </a>
+        </div>
+    </div>
+
+    <!-- إحصائيات الحركات -->
+    <div class="row mb-4">
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="stats-card bg-primary">
+                <div class="h4">{{ total_movements }}</div>
+                <div class="small">إجمالي الحركات</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="stats-card bg-success">
+                <div class="h4">{{ movements_in }}</div>
+                <div class="small">حركات دخول</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="stats-card bg-danger">
+                <div class="h4">{{ movements_out }}</div>
+                <div class="small">حركات خروج</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="stats-card bg-warning">
+                <div class="h4">{{ movements_transfer }}</div>
+                <div class="small">تحويلات</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="stats-card bg-info">
+                <div class="h4">{{ movements_adjustment }}</div>
+                <div class="small">تسويات</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="stats-card bg-secondary">
+                <div class="h4">{{ total_quantity }}</div>
+                <div class="small">إجمالي الكمية</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">سجل الحركات</h5>
+                    <div class="d-flex gap-2">
+                        <input type="date" class="form-control form-control-sm" id="dateFilter">
+                        <select class="form-select form-select-sm" id="typeFilter" style="width: 150px;">
+                            <option value="">جميع الأنواع</option>
+                            <option value="in">دخول</option>
+                            <option value="out">خروج</option>
+                            <option value="transfer">تحويل</option>
+                            <option value="adjustment">تسوية</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="movementsTable">
+                            <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>المنتج</th>
+                                <th>المخزن</th>
+                                <th>نوع الحركة</th>
+                                <th>الكمية</th>
+                                <th>قبل/بعد</th>
+                                <th>المستخدم</th>
+                                <th>المرجع</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for movement in movements %}
+                                <tr class="movement-{{ movement.movement_type }}">
+                                    <td>
+                                        <small>{{ movement.created_at|date:"Y/m/d" }}</small>
+                                        <br>
+                                        <small class="text-muted">{{ movement.created_at|date:"H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ movement.product.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ movement.product.sku }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ movement.warehouse.name }}</span>
+                                    </td>
+                                    <td>
+                                    <span class="badge
+                                        {% if movement.movement_type == 'purchase' %}bg-success
+                                        {% elif movement.movement_type == 'sale' %}bg-danger
+                                        {% elif movement.movement_type == 'transfer' %}bg-warning
+                                        {% else %}bg-info{% endif %}">
+                                        {{ movement.get_movement_type_display }}
+                                    </span>
+                                    </td>
+                                    <td>
+                                        <strong class="{% if movement.quantity > 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {% if movement.quantity > 0 %}+{% endif %}{{ movement.quantity }}
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ movement.quantity_before }} → {{ movement.quantity_after }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small>{{ movement.created_by.get_full_name|default:movement.created_by.username }}</small>
+                                    </td>
+                                    <td>
+                                        {% if movement.reference_number %}
+                                            <small class="text-muted">{{ movement.reference_number }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <i class="bi bi-arrow-left-right text-muted" style="font-size: 3rem;"></i>
+                                        <h5 class="text-muted mt-3">لا توجد حركات مسجلة</h5>
+                                        <p class="text-muted">ابدأ بتسجيل حركات المخزون الأولى</p>
+                                        <a href="{% url 'inventory:movement_create' %}" class="btn btn-primary">
+                                            <i class="bi bi-plus-circle"></i>
+                                            حركة جديدة
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- الترقيم -->
+                    {% if movements.has_other_pages %}
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if movements.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link"
+                                           href="?page={{ movements.previous_page_number }}">السابق</a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in movements.paginator.page_range %}
+                                    {% if movements.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if movements.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ movements.next_page_number }}">التالي</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- رسم بياني للحركات -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات الحركات</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="movementsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- آخر الحركات -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">آخر الحركات</h6>
+                </div>
+                <div class="card-body">
+                    {% for movement in recent_movements|slice:":5" %}
+                        <div class="movement-card movement-{{ movement.movement_type }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ movement.product.name }}</strong>
+                                    <div class="small text-muted">{{ movement.warehouse.name }}</div>
+                                </div>
+                                <span class="badge
+                            {% if movement.movement_type == 'purchase' %}bg-success
+                            {% elif movement.movement_type == 'sale' %}bg-danger
+                            {% elif movement.movement_type == 'transfer' %}bg-warning
+                            {% else %}bg-info{% endif %}">
+                            {{ movement.get_movement_type_display }}
+                        </span>
+                            </div>
+                            <div class="mt-2">
+                        <span class="{% if movement.quantity > 0 %}text-success{% else %}text-danger{% endif %}">
+                            {% if movement.quantity > 0 %}+{% endif %}{{ movement.quantity }}
+                        </span>
+                                <small class="text-muted"> | {{ movement.created_at|timesince }}</small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // رسم بياني للحركات
+            const ctx = document.getElementById('movementsChart').getContext('2d');
+            const movementsChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['دخول', 'خروج', 'تحويل', 'تسوية'],
+                    datasets: [{
+                        data: [{{ movements_in }}, {{ movements_out }}, {{ movements_transfer }}, {{ movements_adjustment }}],
+                        backgroundColor: [
+                            '#28a745',
+                            '#dc3545',
+                            '#ffc107',
+                            '#6f42c1'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true
+                        }
+                    }
+                }
+            });
+
+            // فلترة الجدول
+            document.getElementById('dateFilter').addEventListener('change', filterTable);
+            document.getElementById('typeFilter').addEventListener('change', filterTable);
+
+            function filterTable() {
+                const dateFilter = document.getElementById('dateFilter').value;
+                const typeFilter = document.getElementById('typeFilter').value;
+
+                const rows = document.querySelectorAll('#movementsTable tbody tr');
+
+                rows.forEach(row => {
+                    const date = row.cells[0].querySelector('small').textContent.trim();
+                    const type = row.cells[3].textContent.toLowerCase();
+
+                    let show = true;
+
+                    if (dateFilter) {
+                        const rowDate = new Date(date);
+                        const filterDate = new Date(dateFilter);
+                        if (rowDate.toDateString() !== filterDate.toDateString()) {
+                            show = false;
+                        }
+                    }
+
+                    if (typeFilter) {
+                        if (typeFilter === 'in' && !type.includes('شراء')) show = false;
+                        if (typeFilter === 'out' && !type.includes('بيع')) show = false;
+                        if (typeFilter === 'transfer' && !type.includes('تحويل')) show = false;
+                        if (typeFilter === 'adjustment' && !type.includes('تسوية')) show = false;
+                    }
+
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+        });
+    </script>
+{% endblock %}

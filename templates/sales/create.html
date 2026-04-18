@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}إصدار فاتورة مبيعات{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">إصدار فاتورة مبيعات</h1>
+        <a href="{% url 'sales:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i> رجوع
+        </a>
+    </div>
+
+    <form method="post" action="{% url 'sales:create' %}">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">معلومات الفاتورة</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ form.as_p }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">المنتجات المباعة (الأصناف)</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ formset.management_form }}
+                        <table class="table" id="items-table">
+                            <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>الكمية</th>
+                                    <th>سعر البيع للوحدة</th>
+                                    <th>حذف؟</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for form_item in formset %}
+                                <tr>
+                                    <td>{{ form_item.product }}</td>
+                                    <td>{{ form_item.quantity }}</td>
+                                    <td>{{ form_item.unit_price }}</td>
+                                    <td>{{ form_item.DELETE }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="text-start">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i> إصدار وطباعة הפاتورة
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

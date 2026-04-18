@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إضافة مخزن جديد - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .example-card {
+            border: 2px dashed #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">إضافة مخزن جديد</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:warehouse_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">معلومات المخزن</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="warehouse-form">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">اسم المخزن *</label>
+                                {{ form.name }}
+                                <div class="form-text">اسم واضح ومميز للمخزن</div>
+                                {% if form.name.errors %}
+                                    <div class="text-danger small">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.code.id_for_label }}" class="form-label">كود المخزن *</label>
+                                {{ form.code }}
+                                <div class="form-text">كود مختصر وفريد للمخزن (مثال: WH-001)</div>
+                                {% if form.code.errors %}
+                                    <div class="text-danger small">{{ form.code.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.warehouse_type.id_for_label }}" class="form-label">نوع
+                                    المخزن</label>
+                                {{ form.warehouse_type }}
+                                {% if form.warehouse_type.errors %}
+                                    <div class="text-danger small">{{ form.warehouse_type.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.manager.id_for_label }}" class="form-label">مدير المخزن</label>
+                                {{ form.manager }}
+                                <div class="form-text">اختياري - يمكن تعيين مدير للمخزن</div>
+                                {% if form.manager.errors %}
+                                    <div class="text-danger small">{{ form.manager.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.address.id_for_label }}" class="form-label">عنوان المخزن *</label>
+                            {{ form.address }}
+                            <div class="form-text">العنوان التفصيلي للمخزن</div>
+                            {% if form.address.errors %}
+                                <div class="text-danger small">{{ form.address.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.capacity.id_for_label }}" class="form-label">السعة *</label>
+                                <div class="input-group">
+                                    {{ form.capacity }}
+                                    <span class="input-group-text">وحدة</span>
+                                </div>
+                                <div class="form-text">السعة الإجمالية للمخزن</div>
+                                {% if form.capacity.errors %}
+                                    <div class="text-danger small">{{ form.capacity.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.phone.id_for_label }}" class="form-label">هاتف المخزن</label>
+                                {{ form.phone }}
+                                {% if form.phone.errors %}
+                                    <div class="text-danger small">{{ form.phone.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    مخزن نشط
+                                </label>
+                            </div>
+                            <div class="form-text">المخازن غير النشطة لن تظهر في القوائم المنسدلة</div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'products:warehouse_list' %}" class="btn btn-outline-secondary me-md-2">
+                                إلغاء
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i>
+                                حفظ المخزن
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- معلومات عن أنواع المخازن -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">معلومات عن أنواع المخازن</h6>
+                </div>
+                <div class="card-body">
+                    <div class="info-card">
+                        <h6>أنواع المخازن المتاحة:</h6>
+
+                        <div class="example-card">
+                            <h6 class="text-success">
+                                <i class="bi bi-building"></i>
+                                المخزن الرئيسي
+                            </h6>
+                            <p class="small text-muted mb-2">
+                                المخزن الرئيسي للمؤسسة، عادة ما يكون الأكبر والأكثر أهمية.
+                                يستخدم للتخزين الاستراتيجي والتوزيع للمخازن الأخرى.
+                            </p>
+                            <small class="text-success">مثال: المقر الرئيسي - الرياض</small>
+                        </div>
+
+                        <div class="example-card">
+                            <h6 class="text-primary">
+                                <i class="bi bi-shop"></i>
+                                مخزن فرعي
+                            </h6>
+                            <p class="small text-muted mb-2">
+                                مخازن تابعة للمخزن الرئيسي، توزع جغرافيا لخدمة مناطق محددة.
+                                تستخدم للتخزين اليومي والتوزيع المباشر.
+                            </p>
+                            <small class="text-primary">مثال: فرع جدة - فرع الدمام</small>
+                        </div>
+
+                        <div class="example-card">
+                            <h6 class="text-secondary">
+                                <i class="bi bi-clock"></i>
+                                مخزن مستقبلي
+                            </h6>
+                            <p class="small text-muted mb-2">
+                                مخازن مخطط لإنشائها في المستقبل، يمكن إضافتها مسبقاً للتخطيط.
+                                غير نشطة حالياً ولكنها تساعد في التخطيط المستقبلي.
+                            </p>
+                            <small class="text-secondary">مثال: مخزن مكة - مخزن المدينة</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- المخازن الحالية -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">المخازن الحالية</h6>
+                </div>
+                <div class="card-body">
+                    {% if existing_warehouses %}
+                        <div class="list-group list-group-flush">
+                            {% for warehouse in existing_warehouses %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ warehouse.name }}</strong>
+                                        <small class="text-muted d-block">{{ warehouse.code }}</small>
+                                    </div>
+                                    <span class="badge
+                            {% if warehouse.warehouse_type == 'main' %}bg-success
+                            {% elif warehouse.warehouse_type == 'branch' %}bg-primary
+                            {% else %}bg-secondary{% endif %}">
+                            {{ warehouse.get_warehouse_type_display }}
+                        </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center small">لا توجد مخازن مضافة بعد</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- نصائح -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">نصائح لإدارة المخازن</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>التسمية الواضحة:</strong> استخدم أسماء وقوانين واضحة للمخازن
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>التخطيط الجغرافي:</strong> وزع المخازن حسب المناطق الجغرافية
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>تحديد السعة:</strong> حدد السعة المناسبة لكل مخزن حسب احتياجاته
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>تعيين المديرين:</strong> عين مديراً مسؤولاً عن كل مخزن
+                        </li>
+                        <li>
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <strong>التخطيط المستقبلي:</strong> أضف المخازن المستقبلية للتخطيط المسبق
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- إحصائيات -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات المخازن</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="h4 text-primary">{{ total_warehouses }}</div>
+                        <div class="text-muted">إجمالي المخازن</div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">التوزيع:</small>
+                        <div class="d-flex justify-content-between small mt-1">
+                            <span>رئيسية</span>
+                            <span class="text-success">{{ main_warehouses }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small mt-1">
+                            <span>فروع</span>
+                            <span class="text-primary">{{ branch_warehouses }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small mt-1">
+                            <span>مستقبلية</span>
+                            <span class="text-secondary">{{ future_warehouses }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // التحقق من صحة النموذج
+            const warehouseForm = document.getElementById('warehouse-form');
+            if (warehouseForm) {
+                warehouseForm.addEventListener('submit', function (e) {
+                    const nameInput = document.getElementById('id_name');
+                    const codeInput = document.getElementById('id_code');
+                    const addressInput = document.getElementById('id_address');
+                    const capacityInput = document.getElementById('id_capacity');
+
+                    let isValid = true;
+
+                    // التحقق من الاسم
+                    if (!nameInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال اسم المخزن');
+                        nameInput.focus();
+                    }
+                    // التحقق من الكود
+                    else if (!codeInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال كود المخزن');
+                        codeInput.focus();
+                    }
+                    // التحقق من العنوان
+                    else if (!addressInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال عنوان المخزن');
+                        addressInput.focus();
+                    }
+                    // التحقق من السعة
+                    else if (!capacityInput.value || parseFloat(capacityInput.value) <= 0) {
+                        isValid = false;
+                        alert('السعة يجب أن تكون رقم موجب');
+                        capacityInput.focus();
+                    }
+
+                    if (!isValid) {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    return true;
+                });
+            }
+
+            // توليد كود تلقائي
+            const nameInput = document.getElementById('id_name');
+            const codeInput = document.getElementById('id_code');
+            const typeSelect = document.getElementById('id_warehouse_type');
+
+            if (nameInput && codeInput && typeSelect) {
+                nameInput.addEventListener('blur', function () {
+                    if (!codeInput.value.trim()) {
+                        // اقتراح كود بناءً على الاسم والنوع
+                        const name = this.value.trim();
+                        const type = typeSelect.value;
+
+                        let prefix = 'WH';
+                        if (type === 'main') prefix = 'MAIN';
+                        else if (type === 'branch') prefix = 'BR';
+                        else if (type === 'future') prefix = 'FUT';
+
+                        // أخذ أول حرف من كل كلمة في الاسم
+                        const words = name.split(' ');
+                        let suggestedCode = prefix + '-';
+
+                        if (words.length > 1) {
+                            words.forEach(word => {
+                                if (word.length > 0) {
+                                    suggestedCode += word[0].toUpperCase();
+                                }
+                            });
+                        } else {
+                            suggestedCode += name.substring(0, 3).toUpperCase();
+                        }
+
+                        codeInput.value = suggestedCode;
+                    }
+                });
+
+                typeSelect.addEventListener('change', function () {
+                    if (codeInput.value.trim()) {
+                        // تحديث البادئة إذا تم تغيير النوع
+                        const currentCode = codeInput.value;
+                        const type = this.value;
+
+                        let newPrefix = 'WH';
+                        if (type === 'main') newPrefix = 'MAIN';
+                        else if (type === 'branch') newPrefix = 'BR';
+                        else if (type === 'future') newPrefix = 'FUT';
+
+                        const parts = currentCode.split('-');
+                        if (parts.length > 1) {
+                            codeInput.value = newPrefix + '-' + parts[1];
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}

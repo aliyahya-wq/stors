@@ -1,0 +1,257 @@
+/* تنسيقات مخصصة لتطبيق المنتجات */
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #34495e;
+    --accent-color: #3498db;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+    --info-color: #17a2b8;
+}
+
+/* تحسينات عامة */
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* تنسيقات الجداول */
+.table-hover tbody tr:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+/* تنسيقات البطاقات */
+.stat-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card i {
+    position: absolute;
+    bottom: -10px;
+    left: -10px;
+    opacity: 0.1;
+    font-size: 5rem;
+}
+
+/* تنسيقات الأزرار */
+.btn {
+    border-radius: 0.5rem;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-color), #2980b9);
+    border: none;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success-color), #219652);
+    border: none;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--warning-color), #e67e22);
+    border: none;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger-color), #c0392b);
+    border: none;
+}
+
+/* تنسيقات البطاقات */
+.product-card {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.product-card:hover {
+    border-color: var(--accent-color);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.product-image {
+    height: 200px;
+    object-fit: cover;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+/* تنسيقات شريط التقدم */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+}
+
+.progress-low {
+    background: linear-gradient(90deg, var(--danger-color), #c0392b);
+}
+
+.progress-normal {
+    background: linear-gradient(90deg, var(--success-color), #219652);
+}
+
+.progress-high {
+    background: linear-gradient(90deg, var(--warning-color), #e67e22);
+}
+
+/* تنسيقات البحث */
+.search-box {
+    position: relative;
+}
+
+.search-box .form-control {
+    padding-right: 3rem;
+    border-radius: 2rem;
+}
+
+.search-box .search-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+
+/* تنسيقات الفلترة */
+.filter-section {
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+/* تنسيقات التنبيهات */
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+    border-right: 4px solid;
+}
+
+.alert-success {
+    border-right-color: var(--success-color);
+}
+
+.alert-warning {
+    border-right-color: var(--warning-color);
+}
+
+.alert-danger {
+    border-right-color: var(--danger-color);
+}
+
+.alert-info {
+    border-right-color: var(--info-color);
+}
+
+/* تنسيقات الباركود */
+.barcode-container {
+    background: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e3e6f0;
+}
+
+/* تنسيقات الاستيراد */
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    border-color: var(--accent-color);
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+.upload-area.dragover {
+    border-color: var(--accent-color);
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+/* تنسيقات للهواتف */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        z-index: 1000;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+
+/* تنسيقات الرسوم البيانية */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* تنسيقات الحركات */
+.movement-item {
+    border-right: 4px solid;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: white;
+}
+
+.movement-in {
+    border-right-color: var(--success-color);
+}
+
+.movement-out {
+    border-right-color: var(--danger-color);
+}
+
+.movement-adjustment {
+    border-right-color: var(--warning-color);
+}
+
+/* تنسيقات المخازن */
+.warehouse-card {
+    position: relative;
+}
+
+.capacity-bar {
+    height: 4px;
+    background-color: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.capacity-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.capacity-low {
+    background-color: var(--success-color);
+}
+
+.capacity-medium {
+    background-color: var(--warning-color);
+}
+
+.capacity-high {
+    background-color: var(--danger-color);
+}

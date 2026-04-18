@@ -1,0 +1,337 @@
+{% extends 'inventory/base.html' %}
+{% load humanize %}
+
+{% block title %}لوحة التحكم - نظام المخزون{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <!-- بطاقات الإحصائيات -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="stat-card primary">
+                    <div class="icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="number">11</div>
+                    <div class="label">إجمالي المستخدمين</div>
+                    <div class="trend up">
+                        <i class="fas fa-arrow-up me-1"></i>
+                        12% عن الشهر الماضي
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="stat-card success">
+                    <div class="icon">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                    <div class="number">8</div>
+                    <div class="label">المخازن النشطة</div>
+                    <div class="trend up">
+                        <i class="fas fa-arrow-up me-1"></i>
+                        2 مخازن جديدة
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="stat-card warning">
+                    <div class="icon">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div class="number">156</div>
+                    <div class="label">إجمالي المنتجات</div>
+                    <div class="trend up">
+                        <i class="fas fa-arrow-up me-1"></i>
+                        15 منتج جديد
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="stat-card info">
+                    <div class="icon">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="number">42</div>
+                    <div class="label">حركات اليوم</div>
+                    <div class="trend down">
+                        <i class="fas fa-arrow-down me-1"></i>
+                        5% عن الأمس
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- آخر الأنشطة -->
+            <div class="col-lg-6 mb-4">
+                <div class="table-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">آخر الأنشطة</h5>
+                        <a href="#" class="btn btn-sm btn-primary">عرض الكل</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="activity-icon bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                                         style="width: 45px; height: 45px;">
+                                        <i class="fas fa-sign-in-alt text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 fw-bold">تسجيل دخول</h6>
+                                        <small class="text-muted">من قبل ET</small>
+                                    </div>
+                                </div>
+                                <small class="text-muted">منذ 5 دقائق</small>
+                            </div>
+
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="activity-icon bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                                         style="width: 45px; height: 45px;">
+                                        <i class="fas fa-sign-in-alt text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 fw-bold">تسجيل دخول</h6>
+                                        <small class="text-muted">من قبل ET</small>
+                                    </div>
+                                </div>
+                                <small class="text-muted">منذ 15 دقيقة</small>
+                            </div>
+
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="activity-icon bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                                         style="width: 45px; height: 45px;">
+                                        <i class="fas fa-box text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 fw-bold">إضافة منتج جديد</h6>
+                                        <small class="text-muted">منتج: شاشة LED 32 بوصة</small>
+                                    </div>
+                                </div>
+                                <small class="text-muted">منذ ساعة</small>
+                            </div>
+
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="activity-icon bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                                         style="width: 45px; height: 45px;">
+                                        <i class="fas fa-exchange-alt text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 fw-bold">حركة مخزون</h6>
+                                        <small class="text-muted">دخول 50 وحدة</small>
+                                    </div>
+                                </div>
+                                <small class="text-muted">منذ ساعتين</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- المنتجات منخفضة المخزون -->
+            <div class="col-lg-6 mb-4">
+                <div class="table-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">المنتجات منخفضة المخزون</h5>
+                        <a href="#" class="btn btn-sm btn-warning">عرض الكل</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>المخزن</th>
+                                    <th>الكمية</th>
+                                    <th>الحالة</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="https://via.placeholder.com/40" class="rounded me-3" alt="منتج">
+                                            <div>
+                                                <h6 class="mb-0 fw-bold">شاشة LED 32 بوصة</h6>
+                                                <small class="text-muted">SKU: SCR-001</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>المخزن الرئيسي</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="fw-bold me-2">5</span>
+                                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge badge-warning">منخفض</span></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="https://via.placeholder.com/40" class="rounded me-3" alt="منتج">
+                                            <div>
+                                                <h6 class="mb-0 fw-bold">لوحة مفاتيح لاسلكية</h6>
+                                                <small class="text-muted">SKU: KB-002</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>مخزن الإلكترونيات</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="fw-bold me-2">3</span>
+                                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge badge-warning">منخفض</span></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="https://via.placeholder.com/40" class="rounded me-3" alt="منتج">
+                                            <div>
+                                                <h6 class="mb-0 fw-bold">ماوس لاسلكي</h6>
+                                                <small class="text-muted">SKU: MS-003</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>المخزن الرئيسي</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="fw-bold me-2">8</span>
+                                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge badge-warning">منخفض</span></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- الإحصائيات الإضافية -->
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <div class="chart-container">
+                    <h5 class="mb-4 fw-bold">حركات المخزون</h5>
+                    <canvas id="movementChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <div class="col-lg-4 mb-4">
+                <div class="chart-container">
+                    <h5 class="mb-4 fw-bold">توزيع المنتجات</h5>
+                    <canvas id="productChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <div class="col-lg-4 mb-4">
+                <div class="chart-container">
+                    <h5 class="mb-4 fw-bold">حالة المخازن</h5>
+                    <canvas id="warehouseChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // رسم بياني لحركات المخزون
+            const movementCtx = document.getElementById('movementChart').getContext('2d');
+            new Chart(movementCtx, {
+                type: 'line',
+                data: {
+                    labels: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو'],
+                    datasets: [{
+                        label: 'دخول',
+                        data: [65, 59, 80, 81, 56, 55],
+                        borderColor: '#4361ee',
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'خروج',
+                        data: [28, 48, 40, 19, 86, 27],
+                        borderColor: '#f72585',
+                        backgroundColor: 'rgba(247, 37, 133, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+
+            // رسم بياني لتوزيع المنتجات
+            const productCtx = document.getElementById('productChart').getContext('2d');
+            new Chart(productCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['إلكترونيات', 'أجهزة', 'ملحقات', 'أخرى'],
+                    datasets: [{
+                        data: [35, 25, 20, 20],
+                        backgroundColor: [
+                            '#4361ee',
+                            '#4cc9f0',
+                            '#f72585',
+                            '#4895ef'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+
+            // رسم بياني لحالة المخازن
+            const warehouseCtx = document.getElementById('warehouseChart').getContext('2d');
+            new Chart(warehouseCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['المخزن الرئيسي', 'مخزن الإلكترونيات', 'مخزن الملحقات', 'مخزن المؤقت'],
+                    datasets: [{
+                        label: 'نسبة الامتلاء',
+                        data: [75, 60, 45, 30],
+                        backgroundColor: '#4cc9f0'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+{% endblock %}
