@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_update %}تعديل طلب شراء{% else %}إنشاء طلب شراء جديد{% endif %} - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-10">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cart-plus me-2"></i>
+                        {% if is_update %}تعديل طلب شراء #PO-{{ form.instance.id }}{% else %}إنشاء طلب شراء جديد{% endif %}
+                    </h5>
+                    <a href="{% url 'purchases:purchase_list' %}" class="btn btn-sm btn-light">
+                        <i class="fas fa-times me-1"></i> إلغاء
+                    </a>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" id="purchaseForm">
+                        {% csrf_token %}
+                        
+                        <!-- معلومات الطلب الأساسية -->
+                        <div class="row g-3 mb-4 p-3 bg-light rounded">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">المورد <span class="text-danger">*</span></label>
+                                {{ form.supplier }}
+                                {% if form.supplier.errors %}
+                                <div class="text-danger small mt-1">{{ form.supplier.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">المخزن المستلم <span class="text-danger">*</span></label>
+                                {{ form.warehouse }}
+                                {% if form.warehouse.errors %}
+                                <div class="text-danger small mt-1">{{ form.warehouse.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">حالة الطلب</label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                <div class="text-danger small mt-1">{{ form.status.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12 mt-3">
+                                <label class="form-label fw-bold">ملاحظات إضافية</label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                <div class="text-danger small mt-1">{{ form.notes.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- عناصر الطلب (Formset) -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2">
+                                <i class="fas fa-list me-2 text-primary"></i>
+                                أصناف المنتجات
+                            </h6>
+                            {{ formset.management_form }}
+                            <div class="table-responsive">
+                                <table class="table table-bordered align-middle" id="itemsTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 40%;">المنتج <span class="text-danger">*</span></th>
+                                            <th style="width: 20%;">الكمية <span class="text-danger">*</span></th>
+                                            <th style="width: 20%;">سعر الوحدة <span class="text-danger">*</span></th>
+                                            <th style="width: 15%;">الإجمالي</th>
+                                            <th style="width: 5%;">حذف</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="formsetContainer">
+                                        {% for item_form in formset %}
+                                        <tr class="item-form-row">
+                                            {% for hidden in item_form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+                                            <td>
+                                                {{ item_form.product }}
+                                                {% if item_form.product.errors %}
+                                                <div class="text-danger tiny">{{ item_form.product.errors }}</div>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {{ item_form.quantity }}
+                                                {% if item_form.quantity.errors %}
+                                                <div class="text-danger tiny">{{ item_form.quantity.errors }}</div>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {{ item_form.unit_price }}
+                                                {% if item_form.unit_price.errors %}
+                                                <div class="text-danger tiny">{{ item_form.unit_price.errors }}</div>
+                                                {% endif %}
+                                            </td>
+                                            <td class="row-total fw-bold text-primary">0.00</td>
+                                            <td class="text-center">
+                                                {% if formset.can_delete %}
+                                                    {{ item_form.DELETE }}
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addMore">
+                                <i class="fas fa-plus me-1"></i> إضافة صنف آخر
+                            </button>
+                        </div>
+
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <div class="alert alert-info py-2 mb-0">
+                                    <i class="fas fa-info-circle me-2"></i> تأكد من صحة الأسعار والكميات قبل الحفظ.
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button type="submit" class="btn btn-primary px-5 py-2 fw-bold shadow-sm">
+                                    <i class="fas fa-save me-1"></i> حفظ طلب الشراء
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addMoreBtn = document.getElementById('addMore');
+        const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        const container = document.getElementById('formsetContainer');
+
+        // تحديث الإجماليات لكل صف
+        function updateRowTotal(row) {
+            const qty = parseFloat(row.querySelector('input[name$="-quantity"]').value) || 0;
+            const price = parseFloat(row.querySelector('input[name$="-unit_price"]').value) || 0;
+            const totalCell = row.querySelector('.row-total');
+            totalCell.textContent = (qty * price).toFixed(2);
+        }
+
+        container.addEventListener('input', function(e) {
+            if (e.target.name.includes('-quantity') || e.target.name.includes('-unit_price')) {
+                updateRowTotal(e.target.closest('tr'));
+            }
+        });
+
+        // تفعيل الإجماليات عند التحميل
+        document.querySelectorAll('.item-form-row').forEach(updateRowTotal);
+
+        // إضافة صف جديد (بسيط - ينسخ الأول ويغير المعرفات)
+        addMoreBtn.addEventListener('click', function() {
+            const rowCount = parseInt(totalForms.value);
+            const firstRow = document.querySelector('.item-form-row');
+            const newRow = firstRow.cloneNode(true);
+            
+            newRow.innerHTML = newRow.innerHTML.replace(/-0-/g, `-${rowCount}-`);
+            newRow.querySelectorAll('input, select').forEach(input => {
+                if (input.type !== 'hidden') input.value = '';
+                if (input.type === 'checkbox') input.checked = false;
+            });
+            newRow.querySelector('.row-total').textContent = '0.00';
+            
+            container.appendChild(newRow);
+            totalForms.value = rowCount + 1;
+        });
+    });
+</script>
+<style>
+    .tiny { font-size: 0.75rem; }
+    #itemsTable th { font-size: 0.85rem; }
+    .item-form-row td { vertical-align: top; }
+</style>
+{% endblock %}

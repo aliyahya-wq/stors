@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}طلبات الشراء - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-shopping-cart me-2 text-primary"></i>
+            إدارة طلبات الشراء
+        </h1>
+        <a href="{% url 'purchases:create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>
+            إنشاء طلب شراء جديد
+        </a>
+    </div>
+
+    <!-- بطاقة البحث والفلترة -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small font-weight-bold">المورد</label>
+                    <select name="supplier" class="form-select">
+                        <option value="">كل الموردين</option>
+                        {% for s in suppliers_list %}
+                        <option value="{{ s.id }}" {% if request.GET.supplier == s.id|stringformat:"i" %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small font-weight-bold">الحالة</label>
+                    <select name="status" class="form-select">
+                        <option value="">كل الحالات</option>
+                        <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>قيد الانتظار</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>مكتمل</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>ملغي</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small font-weight-bold">من تاريخ</label>
+                    <input type="date" name="from_date" class="form-control" value="{{ request.GET.from_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small font-weight-bold">إلى تاريخ</label>
+                    <input type="date" name="to_date" class="form-control" value="{{ request.GET.to_date }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-search me-1"></i> بحث
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- جدول الطلبات -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">قائمة طلبات الشراء</h6>
+            <span class="badge bg-secondary">العدد: {{ orders.count }}</span>
+        </div>
+        <div class="card-body">
+            {% if orders %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>رقم الطلب</th>
+                            <th>المورد</th>
+                            <th>المخزن</th>
+                            <th>التاريخ</th>
+                            <th>القيمة الإجمالية</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td class="fw-bold">PO-{{ order.id }}</td>
+                            <td>
+                                <a href="{% url 'purchases:supplier_detail' order.supplier.id %}" class="text-decoration-none">
+                                    {{ order.supplier.name }}
+                                </a>
+                            </td>
+                            <td>{{ order.warehouse.name }}</td>
+                            <td>{{ order.created_at|date:"Y-m-d" }}</td>
+                            <td class="text-success fw-bold">{{ order.total_amount }}</td>
+                            <td>
+                                {% if order.status == 'pending' %}
+                                <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i> قيد الانتظار</span>
+                                {% elif order.status == 'completed' %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i> مكتمل</span>
+                                {% else %}
+                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i> ملغي</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'purchases:purchase_detail' order.id %}" class="btn btn-sm btn-outline-info" title="عرض">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'purchases:purchase_update' order.id %}" class="btn btn-sm btn-outline-warning" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'purchases:purchase_pdf' order.id %}" class="btn btn-sm btn-outline-secondary" title="تحميل PDF">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                    <a href="{% url 'purchases:purchase_delete' order.id %}" class="btn btn-sm btn-outline-danger" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-shopping-basket fa-3x text-muted mb-3"></i>
+                <h5>لا توجد طلبات شراء مسجلة</h5>
+                <p class="text-muted">ابدأ بإنشاء أول طلب شراء لتزويد مخازنك بالمنتجات.</p>
+                <a href="{% url 'purchases:create' %}" class="btn btn-primary mt-2">إنشاء طلب شراء</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table th { font-weight: 600; font-size: 0.85rem; color: #666; }
+</style>
+{% endblock %}

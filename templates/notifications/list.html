@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}الإشعارات - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-bell me-2 text-primary"></i>
+            الإشعارات والتنبيهات
+        </h1>
+        {% if notifications.count > 0 %}
+        <a href="{% url 'notifications:mark_all_read' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-check-double me-1"></i>
+            تمييز الكل كمقروء
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body p-0">
+            {% if notifications %}
+            <div class="list-group list-group-flush">
+                {% for notification in notifications %}
+                <div class="list-group-item list-group-item-action p-4 {% if not notification.is_read %}bg-light border-start border-4 border-{{ notification.level }}{% endif %}">
+                    <div class="d-flex w-100 justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                {% if notification.level == 'info' %}
+                                <i class="fas fa-info-circle text-info fa-lg"></i>
+                                {% elif notification.level == 'success' %}
+                                <i class="fas fa-check-circle text-success fa-lg"></i>
+                                {% elif notification.level == 'warning' %}
+                                <i class="fas fa-exclamation-triangle text-warning fa-lg"></i>
+                                {% elif notification.level == 'danger' %}
+                                <i class="fas fa-exclamation-circle text-danger fa-lg"></i>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h6 class="mb-1 font-weight-bold {% if not notification.is_read %}text-dark{% else %}text-muted{% endif %}">
+                                    {{ notification.title }}
+                                </h6>
+                                <p class="mb-1 text-muted">{{ notification.message }}</p>
+                                <small class="text-secondary">
+                                    <i class="far fa-clock me-1"></i>{{ notification.created_at|timesince }}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            {% if not notification.is_read %}
+                            <a href="{% url 'notifications:mark_read' notification.id %}" class="btn btn-sm btn-primary rounded-pill px-3">
+                                {% if notification.link %}الانتقال والرؤية{% else %}تمييز كمقروء{% endif %}
+                            </a>
+                            {% elif notification.link %}
+                            <a href="{{ notification.link }}" class="btn btn-sm btn-outline-info rounded-pill px-3">فتح الرابط</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="far fa-bell-slash fa-3x text-muted"></i>
+                </div>
+                <h5 class="text-muted">لا يوجد إشعارات حالياً</h5>
+                <p class="text-muted small">سيتم إخطارك هنا بأي تحديثات هامة في النظام.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .list-group-item { transition: all 0.2s ease; border-bottom: 1px solid #efefef; }
+    .list-group-item:hover { background-color: #f8f9fc !important; }
+    .border-info { border-color: #36b9cc !important; }
+    .border-success { border-color: #1cc88a !important; }
+    .border-warning { border-color: #f6c23e !important; }
+    .border-danger { border-color: #e74a3b !important; }
+</style>
+{% endblock %}

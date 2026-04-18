@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}فواتير المبيعات - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-file-invoice-dollar me-2 text-primary"></i>
+            فواتير المبيعات
+        </h1>
+        <a href="{% url 'sales:create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>
+            إنشاء فاتورة جديدة
+        </a>
+    </div>
+
+    <!-- بطاقة البحث والفلترة -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small font-weight-bold">ابحث عن عميل</label>
+                    <input type="text" name="customer_name" class="form-control" placeholder="اسم العميل..." value="{{ request.GET.customer_name }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small font-weight-bold">حالة الفاتورة</label>
+                    <select name="status" class="form-select">
+                        <option value="">كل الحالات</option>
+                        <option value="paid" {% if request.GET.status == 'paid' %}selected{% endif %}>مدفوعة</option>
+                        <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>قيد الانتظار</option>
+                        <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>ملغاة</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small font-weight-bold">التاريخ</label>
+                    <input type="date" name="date" class="form-control" value="{{ request.GET.date }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-search me-1"></i> بحث
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- جدول الفواتير -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">قائمة الفواتير</h6>
+        </div>
+        <div class="card-body">
+            {% if invoices %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>رقم الفاتورة</th>
+                            <th>العميل</th>
+                            <th>التاريخ</th>
+                            <th>المخزن المصدر</th>
+                            <th>الإجمالي</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in invoices %}
+                        <tr>
+                            <td class="fw-bold">#INV-{{ invoice.id }}</td>
+                            <td>{{ invoice.customer.name|default:"عميل نقدي" }}</td>
+                            <td>{{ invoice.created_at|date:"Y-m-d" }}</td>
+                            <td>{{ invoice.warehouse.name }}</td>
+                            <td class="text-success fw-bold">{{ invoice.total_amount }}</td>
+                            <td>
+                                {% if invoice.status == 'paid' %}
+                                <span class="badge bg-success text-white"><i class="fas fa-check-circle me-1"></i> مدفوعة</span>
+                                {% elif invoice.status == 'pending' %}
+                                <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i> قيد الانتظار</span>
+                                {% else %}
+                                <span class="badge bg-danger text-white"><i class="fas fa-times-circle me-1"></i> ملغاة</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'sales:invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-info" title="عرض">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'sales:invoice_update' invoice.id %}" class="btn btn-sm btn-outline-warning" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-sm btn-outline-secondary" title="تحميل PDF">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                    <a href="{% url 'sales:invoice_delete' invoice.id %}" class="btn btn-sm btn-outline-danger" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                <h5>لا توجد فواتير مبيعات</h5>
+                <p class="text-muted">ابدأ بإنشاء أول فاتورة مبيعات الآن.</p>
+                <a href="{% url 'sales:create' %}" class="btn btn-primary mt-2">إنشاء فاتورة</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

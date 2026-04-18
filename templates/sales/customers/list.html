@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة العملاء - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-users me-2 text-primary"></i>
+            إدارة العملاء
+        </h1>
+        <a href="{% url 'sales:customer_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>
+            إضافة عميل جديد
+        </a>
+    </div>
+
+    <!-- بطاقة البحث والفلترة -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-center">
+                <div class="col-md-9">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="بحث باسم العميل، الهاتف أو العنوان..." value="{{ request.GET.q }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        تصفية النتائج
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- جدول العملاء -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">قائمة العملاء</h6>
+            <span class="badge bg-primary">العدد: {{ customers.count }}</span>
+        </div>
+        <div class="card-body">
+            {% if customers %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>اسم العميل</th>
+                            <th>رقم الهاتف</th>
+                            <th>البريد الإلكتروني</th>
+                            <th>العنوان</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark">{{ customer.name }}</div>
+                            </td>
+                            <td>{{ customer.phone }}</td>
+                            <td>{{ customer.email|default:"-" }}</td>
+                            <td>{{ customer.address|truncatechars:30 }}</td>
+                            <td>
+                                {% if customer.is_active %}
+                                <span class="badge bg-success-soft text-success border border-success">نشط</span>
+                                {% else %}
+                                <span class="badge bg-danger-soft text-danger border border-danger">غير نشط</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'sales:customer_detail' customer.id %}" class="btn btn-sm btn-outline-info" title="عرض">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'sales:customer_update' customer.id %}" class="btn btn-sm btn-outline-warning" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'sales:customer_delete' customer.id %}" class="btn btn-sm btn-outline-danger" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+                <h5>لا يوجد عملاء مضافين</h5>
+                <p class="text-muted">ابدأ بإدخال بيانات عملائك لإصدار الفواتير لهم.</p>
+                <a href="{% url 'sales:customer_create' %}" class="btn btn-primary mt-2">إضافة عميل</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bg-success-soft { background-color: rgba(40, 167, 69, 0.1); }
+    .bg-danger-soft { background-color: rgba(220, 53, 69, 0.1); }
+</style>
+{% endblock %}
