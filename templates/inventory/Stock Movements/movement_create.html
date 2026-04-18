@@ -1,0 +1,534 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}حركة مخزون جديدة - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .movement-type-card {
+            border: 2px solid #e3e6f0;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .movement-type-card:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+
+        .movement-type-card.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(0, 123, 255, 0.05);
+        }
+
+        .product-search {
+            position: relative;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-result-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f8f9fa;
+            cursor: pointer;
+        }
+
+        .search-result-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .stock-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .preview-card {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">حركة مخزون جديدة</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:stock_movements' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للحركات
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">نموذج حركة المخزون</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="movement-form">
+                        {% csrf_token %}
+
+                        <!-- اختيار نوع الحركة -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">اختر نوع الحركة</h6>
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <div class="movement-type-card text-center" data-type="purchase">
+                                        <i class="bi bi-box-arrow-in-down text-success" style="font-size: 2rem;"></i>
+                                        <h6 class="mt-2">استلام شراء</h6>
+                                        <small class="text-muted">إضافة مخزون جديد</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <div class="movement-type-card text-center" data-type="sale">
+                                        <i class="bi bi-box-arrow-up text-danger" style="font-size: 2rem;"></i>
+                                        <h6 class="mt-2">صرف مبيعات</h6>
+                                        <small class="text-muted">خصم للمبيعات</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <div class="movement-type-card text-center" data-type="transfer">
+                                        <i class="bi bi-arrow-left-right text-warning" style="font-size: 2rem;"></i>
+                                        <h6 class="mt-2">تحويل داخلي</h6>
+                                        <small class="text-muted">نقل بين المخازن</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <div class="movement-type-card text-center" data-type="adjustment">
+                                        <i class="bi bi-sliders text-info" style="font-size: 2rem;"></i>
+                                        <h6 class="mt-2">تسوية</h6>
+                                        <small class="text-muted">تصحيح المخزون</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="movement_type" id="movement_type" required>
+                        </div>
+
+                        <!-- معلومات المنتج -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">اختر المنتج</h6>
+                            <div class="product-search">
+                                <input type="text" class="form-control" id="product-search"
+                                       placeholder="ابحث عن منتج بالاسم أو SKU أو الباركود...">
+                                <div class="search-results" id="search-results"></div>
+                            </div>
+                            <input type="hidden" name="product" id="product_id" required>
+
+                            <!-- معلومات المنتج المحدد -->
+                            <div class="stock-info d-none" id="product-info">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <strong>المنتج:</strong>
+                                        <span id="product-name">-</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>SKU:</strong>
+                                        <span id="product-sku">-</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>التصنيف:</strong>
+                                        <span id="product-category">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- معلومات المخزن والكمية -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">المخزن *</label>
+                                <select class="form-select" name="warehouse" id="warehouse-select" required>
+                                    <option value="">اختر المخزن</option>
+                                    {% for warehouse in warehouses %}
+                                        <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">الكمية *</label>
+                                <input type="number" class="form-control" name="quantity"
+                                       id="quantity-input" min="1" step="1" required>
+                            </div>
+                        </div>
+
+                        <!-- معلومات إضافية للتحويل -->
+                        <div class="mb-4 d-none" id="transfer-section">
+                            <h6 class="mb-3">معلومات التحويل</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">من المخزن</label>
+                                    <select class="form-select" name="from_warehouse" id="from-warehouse">
+                                        <option value="">اختر المخزن المصدر</option>
+                                        {% for warehouse in warehouses %}
+                                            <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">إلى المخزن</label>
+                                    <select class="form-select" name="to_warehouse" id="to-warehouse">
+                                        <option value="">اختر المخزن الهدف</option>
+                                        {% for warehouse in warehouses %}
+                                            <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- معلومات المخزون -->
+                        <div class="stock-info d-none" id="stock-details">
+                            <h6>معلومات المخزون الحالي</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>المخزون الحالي:</strong>
+                                    <span id="current-stock">0</span> وحدة
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>الحد الأدنى:</strong>
+                                    <span id="min-stock">0</span> وحدة
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>الحد الأقصى:</strong>
+                                    <span id="max-stock">0</span> وحدة
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- معاينة الحركة -->
+                        <div class="preview-card d-none" id="movement-preview">
+                            <h6>معاينة الحركة</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>نوع الحركة:</strong>
+                                    <span id="preview-type">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>الكمية:</strong>
+                                    <span id="preview-quantity">0</span> وحدة
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <strong>المخزن:</strong>
+                                    <span id="preview-warehouse">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>التأثير:</strong>
+                                    <span id="preview-effect" class="fw-bold">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ملاحظات -->
+                        <div class="mb-4">
+                            <label class="form-label">ملاحظات</label>
+                            <textarea class="form-control" name="notes" rows="3"
+                                      placeholder="ملاحظات إضافية عن الحركة..."></textarea>
+                        </div>
+
+                        <!-- المرجع -->
+                        <div class="mb-4">
+                            <label class="form-label">رقم المرجع (اختياري)</label>
+                            <input type="text" class="form-control" name="reference_number"
+                                   placeholder="مثال: PO-2024-001 أو SO-2024-001">
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'inventory:stock_movements' %}" class="btn btn-outline-secondary me-md-2">
+                                إلغاء
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                                <i class="bi bi-check-circle"></i>
+                                تأكيد الحركة
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- التعليمات -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">تعليمات الحركات</h6>
+                </div>
+                <div class="card-body">
+                    <div class="instruction-item mb-3">
+                        <h6 class="text-success">
+                            <i class="bi bi-box-arrow-in-down"></i>
+                            استلام شراء
+                        </h6>
+                        <p class="small text-muted mb-0">إضافة كميات جديدة للمخزون من الموردين</p>
+                    </div>
+                    <div class="instruction-item mb-3">
+                        <h6 class="text-danger">
+                            <i class="bi bi-box-arrow-up"></i>
+                            صرف مبيعات
+                        </h6>
+                        <p class="small text-muted mb-0">خصم كميات من المخزون للمبيعات</p>
+                    </div>
+                    <div class="instruction-item mb-3">
+                        <h6 class="text-warning">
+                            <i class="bi bi-arrow-left-right"></i>
+                            تحويل داخلي
+                        </h6>
+                        <p class="small text-muted mb-0">نقل كميات بين المخازن المختلفة</p>
+                    </div>
+                    <div class="instruction-item">
+                        <h6 class="text-info">
+                            <i class="bi bi-sliders"></i>
+                            تسوية
+                        </h6>
+                        <p class="small text-muted mb-0">تصحيح أرقام المخزون بعد الجرد</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- المنتجات الأكثر حركة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">المنتجات الأكثر حركة</h6>
+                </div>
+                <div class="card-body">
+                    {% for product in top_moving_products %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <div>
+                                <strong class="small">{{ product.name }}</strong>
+                                <div class="text-muted">{{ product.sku }}</div>
+                            </div>
+                            <span class="badge bg-primary">{{ product.movement_count }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted text-center small">لا توجد حركات سابقة</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const movementTypeCards = document.querySelectorAll('.movement-type-card');
+            const movementTypeInput = document.getElementById('movement_type');
+            const productSearch = document.getElementById('product-search');
+            const searchResults = document.getElementById('search-results');
+            const productIdInput = document.getElementById('product_id');
+            const productInfo = document.getElementById('product-info');
+            const warehouseSelect = document.getElementById('warehouse-select');
+            const quantityInput = document.getElementById('quantity-input');
+            const transferSection = document.getElementById('transfer-section');
+            const stockDetails = document.getElementById('stock-details');
+            const movementPreview = document.getElementById('movement-preview');
+            const submitBtn = document.getElementById('submit-btn');
+
+            let selectedProduct = null;
+            let selectedMovementType = '';
+
+            // اختيار نوع الحركة
+            movementTypeCards.forEach(card => {
+                card.addEventListener('click', function () {
+                    movementTypeCards.forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedMovementType = this.dataset.type;
+                    movementTypeInput.value = selectedMovementType;
+
+                    // إظهار/إخفاء قسم التحويل
+                    if (selectedMovementType === 'transfer') {
+                        transferSection.classList.remove('d-none');
+                    } else {
+                        transferSection.classList.add('d-none');
+                    }
+
+                    updatePreview();
+                    checkFormValidity();
+                });
+            });
+
+            // بحث المنتجات
+            productSearch.addEventListener('input', function () {
+                const query = this.value.trim();
+
+                if (query.length < 2) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
+                // محاكاة البحث (في التطبيق الحقيقي سيكون طلب AJAX)
+                const mockResults = [
+                    {id: 1, name: 'سامسونج جالاكسي S24', sku: 'SM-S24-001', category: 'هواتف'},
+                    {id: 2, name: 'آيفون 15 برو', sku: 'AP-15P-001', category: 'هواتف'},
+                    {id: 3, name: 'لابتوب ديل XPS 13', sku: 'DL-XPS13-001', category: 'لابتوبات'},
+                ].filter(item =>
+                    item.name.includes(query) ||
+                    item.sku.includes(query)
+                );
+
+                displaySearchResults(mockResults);
+            });
+
+            function displaySearchResults(results) {
+                searchResults.innerHTML = '';
+
+                if (results.length === 0) {
+                    searchResults.innerHTML = '<div class="search-result-item text-muted">لا توجد نتائج</div>';
+                } else {
+                    results.forEach(product => {
+                        const item = document.createElement('div');
+                        item.className = 'search-result-item';
+                        item.innerHTML = `
+                    <strong>${product.name}</strong>
+                    <div class="small text-muted">${product.sku} - ${product.category}</div>
+                `;
+                        item.addEventListener('click', function () {
+                            selectProduct(product);
+                        });
+                        searchResults.appendChild(item);
+                    });
+                }
+
+                searchResults.style.display = 'block';
+            }
+
+            function selectProduct(product) {
+                selectedProduct = product;
+                productSearch.value = product.name;
+                productIdInput.value = product.id;
+                productInfo.classList.remove('d-none');
+
+                document.getElementById('product-name').textContent = product.name;
+                document.getElementById('product-sku').textContent = product.sku;
+                document.getElementById('product-category').textContent = product.category;
+
+                // محاكاة بيانات المخزون
+                document.getElementById('current-stock').textContent = '150';
+                document.getElementById('min-stock').textContent = '10';
+                document.getElementById('max-stock').textContent = '500';
+                stockDetails.classList.remove('d-none');
+
+                searchResults.style.display = 'none';
+                updatePreview();
+                checkFormValidity();
+            }
+
+            // تحديث المعاينة
+            function updatePreview() {
+                if (selectedMovementType && selectedProduct && warehouseSelect.value && quantityInput.value) {
+                    movementPreview.classList.remove('d-none');
+
+                    const typeNames = {
+                        'purchase': 'استلام شراء',
+                        'sale': 'صرف مبيعات',
+                        'transfer': 'تحويل داخلي',
+                        'adjustment': 'تسوية'
+                    };
+
+                    const warehouse = warehouseSelect.options[warehouseSelect.selectedIndex].text;
+                    const quantity = quantityInput.value;
+
+                    document.getElementById('preview-type').textContent = typeNames[selectedMovementType];
+                    document.getElementById('preview-quantity').textContent = quantity;
+                    document.getElementById('preview-warehouse').textContent = warehouse;
+
+                    const effectElement = document.getElementById('preview-effect');
+                    if (selectedMovementType === 'purchase' || selectedMovementType === 'adjustment') {
+                        effectElement.textContent = `+${quantity} وحدة`;
+                        effectElement.className = 'fw-bold text-success';
+                    } else if (selectedMovementType === 'sale') {
+                        effectElement.textContent = `-${quantity} وحدة`;
+                        effectElement.className = 'fw-bold text-danger';
+                    } else {
+                        effectElement.textContent = `تحويل ${quantity} وحدة`;
+                        effectElement.className = 'fw-bold text-warning';
+                    }
+                } else {
+                    movementPreview.classList.add('d-none');
+                }
+            }
+
+            // التحقق من صحة النموذج
+            function checkFormValidity() {
+                const isValid = selectedMovementType && selectedProduct && warehouseSelect.value && quantityInput.value;
+                submitBtn.disabled = !isValid;
+            }
+
+            // أحداث التحديث
+            warehouseSelect.addEventListener('change', function () {
+                updatePreview();
+                checkFormValidity();
+            });
+
+            quantityInput.addEventListener('input', function () {
+                updatePreview();
+                checkFormValidity();
+            });
+
+            // إغلاق نتائج البحث عند النقر خارجها
+            document.addEventListener('click', function (e) {
+                if (!productSearch.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.style.display = 'none';
+                }
+            });
+
+            // التحقق النهائي عند الإرسال
+            document.getElementById('movement-form').addEventListener('submit', function (e) {
+                if (!selectedMovementType) {
+                    e.preventDefault();
+                    alert('يرجى اختيار نوع الحركة');
+                    return false;
+                }
+
+                if (!selectedProduct) {
+                    e.preventDefault();
+                    alert('يرجى اختيار المنتج');
+                    return false;
+                }
+
+                if (selectedMovementType === 'transfer') {
+                    const fromWarehouse = document.getElementById('from-warehouse').value;
+                    const toWarehouse = document.getElementById('to-warehouse').value;
+
+                    if (!fromWarehouse || !toWarehouse) {
+                        e.preventDefault();
+                        alert('يرجى اختيار المخزن المصدر والهدف للتحويل');
+                        return false;
+                    }
+
+                    if (fromWarehouse === toWarehouse) {
+                        e.preventDefault();
+                        alert('لا يمكن التحويل إلى نفس المخزن');
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+        });
+    </script>
+{% endblock %}

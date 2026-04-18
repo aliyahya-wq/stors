@@ -1,0 +1,645 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تنبيهات المخزون - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .alert-card {
+            border-left: 4px solid #dc3545;
+            background: #fff;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: all 0.3s ease;
+        }
+
+        .alert-card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .alert-critical {
+            border-left-color: #dc3545;
+            background: linear-gradient(135deg, #fff, #f8d7da);
+        }
+
+        .alert-high {
+            border-left-color: #fd7e14;
+            background: linear-gradient(135deg, #fff, #fff3cd);
+        }
+
+        .alert-medium {
+            border-left-color: #ffc107;
+            background: linear-gradient(135deg, #fff, #e7f3ff);
+        }
+
+        .alert-low {
+            border-left-color: #0dcaf0;
+            background: linear-gradient(135deg, #fff, #f8f9fa);
+        }
+
+        .priority-badge {
+            font-size: 0.75rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .alert-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .stat-item {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .quick-actions .btn {
+            margin: 0.125rem;
+        }
+
+        .filter-tabs .nav-link {
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .filter-tabs .nav-link.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+            background: transparent;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">تنبيهات المخزون</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:alert_settings' %}" class="btn btn-outline-primary">
+                <i class="bi bi-gear"></i>
+                الإعدادات
+            </a>
+        </div>
+    </div>
+
+    <!-- إحصائيات التنبيهات -->
+    <div class="alert-stats">
+        <div class="stat-item">
+            <div class="h3 text-danger">{{ critical_alerts }}</div>
+            <div class="small">حرجة</div>
+        </div>
+        <div class="stat-item">
+            <div class="h3 text-warning">{{ high_alerts }}</div>
+            <div class="small">عالية</div>
+        </div>
+        <div class="stat-item">
+            <div class="h3 text-info">{{ medium_alerts }}</div>
+            <div class="small">متوسطة</div>
+        </div>
+        <div class="stat-item">
+            <div class="h3 text-secondary">{{ low_alerts }}</div>
+            <div class="small">منخفضة</div>
+        </div>
+        <div class="stat-item">
+            <div class="h3 text-success">{{ resolved_alerts }}</div>
+            <div class="small">تم حلها</div>
+        </div>
+        <div class="stat-item">
+            <div class="h3 text-primary">{{ total_alerts }}</div>
+            <div class="small">إجمالي التنبيهات</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- علامات التبويب للفلترة -->
+            <ul class="nav nav-tabs filter-tabs mb-4" id="alertTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all"
+                            type="button">
+                        الكل ({{ total_alerts }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="active-tab" data-bs-toggle="tab" data-bs-target="#active"
+                            type="button">
+                        نشطة ({{ active_alerts }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="resolved-tab" data-bs-toggle="tab" data-bs-target="#resolved"
+                            type="button">
+                        تم حلها ({{ resolved_alerts }})
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="alertTabsContent">
+                <!-- جميع التنبيهات -->
+                <div class="tab-pane fade show active" id="all" role="tabpanel">
+                    {% if alerts %}
+                        {% for alert in alerts %}
+                            <div class="alert-card alert-{{ alert.priority }} {% if alert.is_resolved %}resolved{% endif %}"
+                                 data-priority="{{ alert.priority }}"
+                                 data-resolved="{{ alert.is_resolved|yesno:'true,false' }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <h6 class="mb-1">{{ alert.product.name }}</h6>
+                                                <p class="text-muted small mb-2">
+                                                    <i class="bi bi-building"></i>
+                                                    {{ alert.warehouse.name|default:"جميع المخازن" }}
+                                                    | <i class="bi bi-clock"></i> {{ alert.alert_date|timesince }}
+                                                </p>
+                                            </div>
+                                            <span class="priority-badge badge
+                                        {% if alert.priority == 'critical' %}bg-danger
+                                        {% elif alert.priority == 'high' %}bg-warning
+                                        {% elif alert.priority == 'medium' %}bg-info
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ alert.get_priority_display }}
+                                    </span>
+                                        </div>
+
+                                        <p class="mb-3">{{ alert.message }}</p>
+
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <small class="text-muted d-block">القيمة الحالية</small>
+                                                <strong>{{ alert.current_value }}</strong>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted d-block">قيمة العتبة</small>
+                                                <strong>{{ alert.threshold_value }}</strong>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted d-block">نوع التنبيه</small>
+                                                <strong>{{ alert.get_alert_type_display }}</strong>
+                                            </div>
+                                        </div>
+
+                                        {% if alert.is_resolved %}
+                                            <div class="mt-2 p-2 bg-success text-white rounded">
+                                                <small>
+                                                    <i class="bi bi-check-circle"></i>
+                                                    تم الحل
+                                                    بواسطة {{ alert.resolved_by.get_full_name|default:alert.resolved_by.username }}
+                                                    في {{ alert.resolved_at|date:"Y/m/d H:i" }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4 text-end">
+                                        <div class="btn-group-vertical">
+                                            {% if not alert.is_resolved %}
+                                                <button class="btn btn-sm btn-success resolve-alert"
+                                                        data-alert-id="{{ alert.id }}">
+                                                    <i class="bi bi-check-lg"></i> تم الحل
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-warning acknowledge-alert"
+                                                        data-alert-id="{{ alert.id }}">
+                                                    <i class="bi bi-eye"></i> إقرار
+                                                </button>
+                                            {% endif %}
+                                            <a href="{% url 'products:product_detail' alert.product.id %}"
+                                               class="btn btn-sm btn-outline-info">
+                                                <i class="bi bi-box"></i> المنتج
+                                            </a>
+                                            {% if alert.is_resolved %}
+                                                <button class="btn btn-sm btn-outline-danger reopen-alert"
+                                                        data-alert-id="{{ alert.id }}">
+                                                    <i class="bi bi-arrow-repeat"></i> إعادة فتح
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-bell text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="text-muted mt-3">لا توجد تنبيهات</h5>
+                            <p class="text-muted">جميع مؤشرات المخزون ضمن المستويات الطبيعية</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- التنبيهات النشطة -->
+                <div class="tab-pane fade" id="active" role="tabpanel">
+                    {% if active_alerts > 0 %}
+                        {% for alert in alerts %}
+                            {% if not alert.is_resolved %}
+                                <div class="alert-card alert-{{ alert.priority }}" data-priority="{{ alert.priority }}">
+                                    <!-- نفس محتوى التنبيه -->
+                                    {% include 'inventory/alerts/alert_card.html' %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                            <h5 class="text-success mt-3">لا توجد تنبيهات نشطة</h5>
+                            <p class="text-muted">جميع التنبيهات تم التعامل معها</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- التنبيهات المحلولة -->
+                <div class="tab-pane fade" id="resolved" role="tabpanel">
+                    {% if resolved_alerts > 0 %}
+                        {% for alert in alerts %}
+                            {% if alert.is_resolved %}
+                                <div class="alert-card alert-{{ alert.priority }} resolved"
+                                     data-priority="{{ alert.priority }}">
+                                    <!-- نفس محتوى التنبيه -->
+                                    {% include 'inventory/alerts/alert_card.html' %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-clock-history text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="text-muted mt-3">لا توجد تنبيهات محلولة</h5>
+                            <p class="text-muted">لم يتم حل أي تنبيهات بعد</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- الترقيم -->
+            {% if alerts.has_other_pages %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if alerts.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ alerts.previous_page_number }}">السابق</a>
+                            </li>
+                        {% endif %}
+
+                        {% for num in alerts.paginator.page_range %}
+                            {% if alerts.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if alerts.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ alerts.next_page_number }}">التالي</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <!-- أنواع التنبيهات -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">توزيع التنبيهات</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="alertsChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- المنتجات الأكثر تنبيهاً -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">المنتجات الأكثر تنبيهاً</h6>
+                </div>
+                <div class="card-body">
+                    {% for product in top_alerted_products %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <div>
+                                <strong class="small">{{ product.name }}</strong>
+                                <div class="text-muted">{{ product.alert_count }} تنبيه</div>
+                            </div>
+                            <span class="badge bg-warning">{{ product.latest_alert_type }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted text-center small">لا توجد منتجات متكررة التنبيه</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-danger" id="resolve-all-critical">
+                            <i class="bi bi-check-all"></i>
+                            حل جميع الحرجة
+                        </button>
+                        <button class="btn btn-outline-warning" id="acknowledge-all">
+                            <i class="bi bi-eye"></i>
+                            إقرار الكل
+                        </button>
+                        <a href="{% url 'inventory:inventory_list' %}" class="btn btn-outline-info">
+                            <i class="bi bi-box"></i>
+                            مراجعة المخزون
+                        </a>
+                        <a href="{% url 'inventory:alert_settings' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-gear"></i>
+                            إعدادات التنبيهات
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال تأكيد الإجراء -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalTitle">تأكيد الإجراء</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmModalBody">
+                    <!-- سيتم تعبئته ديناميكياً -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" id="confirmAction">تأكيد</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // رسم بياني للتنبيهات
+            const ctx = document.getElementById('alertsChart').getContext('2d');
+            const alertsChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['منخفض المخزون', 'نفاد المخزون', 'انتهاء الصلاحية', 'مخزون زائد'],
+                    datasets: [{
+                        data: [
+                            {{ low_stock_alerts }},
+                            {{ out_of_stock_alerts }},
+                            {{ expiry_alerts }},
+                            {{ over_stock_alerts }}
+                        ],
+                        backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#0dcaf0'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true
+                        }
+                    }
+                }
+            });
+
+            let currentAction = null;
+            let currentAlertId = null;
+
+            // حل التنبيه
+            document.querySelectorAll('.resolve-alert').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    currentAlertId = this.dataset.alertId;
+                    showConfirmModal(
+                        'حل التنبيه',
+                        'هل تريد标记 هذا التنبيه كمحلول؟',
+                        'resolve'
+                    );
+                });
+            });
+
+            // إقرار التنبيه
+            document.querySelectorAll('.acknowledge-alert').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    currentAlertId = this.dataset.alertId;
+                    showConfirmModal(
+                        'إقرار التنبيه',
+                        'هل تريد الإقرار بهذا التنبيه؟',
+                        'acknowledge'
+                    );
+                });
+            });
+
+            // إعادة فتح التنبيه
+            document.querySelectorAll('.reopen-alert').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    currentAlertId = this.dataset.alertId;
+                    showConfirmModal(
+                        'إعادة فتح التنبيه',
+                        'هل تريد إعادة فتح هذا التنبيه؟',
+                        'reopen'
+                    );
+                });
+            });
+
+            // الإجراءات الجماعية
+            document.getElementById('resolve-all-critical').addEventListener('click', function () {
+                showConfirmModal(
+                    'حل جميع التنبيهات الحرجة',
+                    'هل تريد حل جميع التنبيهات ذات الأولوية الحرجة؟',
+                    'resolveAllCritical'
+                );
+            });
+
+            document.getElementById('acknowledge-all').addEventListener('click', function () {
+                showConfirmModal(
+                    'إقرار جميع التنبيهات',
+                    'هل تريد الإقرار بجميع التنبيهات النشطة؟',
+                    'acknowledgeAll'
+                );
+            });
+
+            function showConfirmModal(title, message, action) {
+                currentAction = action;
+                document.getElementById('confirmModalTitle').textContent = title;
+                document.getElementById('confirmModalBody').textContent = message;
+
+                const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+                modal.show();
+            }
+
+            // تأكيد الإجراء
+            document.getElementById('confirmAction').addEventListener('click', function () {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+
+                switch (currentAction) {
+                    case 'resolve':
+                        resolveAlert(currentAlertId);
+                        break;
+                    case 'acknowledge':
+                        acknowledgeAlert(currentAlertId);
+                        break;
+                    case 'reopen':
+                        reopenAlert(currentAlertId);
+                        break;
+                    case 'resolveAllCritical':
+                        resolveAllCriticalAlerts();
+                        break;
+                    case 'acknowledgeAll':
+                        acknowledgeAllAlerts();
+                        break;
+                }
+
+                modal.hide();
+            });
+
+            function resolveAlert(alertId) {
+                // محاكاة حل التنبيه
+                const alertCard = document.querySelector(`.resolve-alert[data-alert-id="${alertId}"]`).closest('.alert-card');
+                alertCard.classList.add('resolved');
+
+                // تحديث الواجهة
+                const buttonGroup = alertCard.querySelector('.btn-group-vertical');
+                buttonGroup.innerHTML = `
+            <a href="{% url 'products:product_detail' 0 %}" class="btn btn-sm btn-outline-info">
+                <i class="bi bi-box"></i> المنتج
+            </a>
+            <button class="btn btn-sm btn-outline-danger reopen-alert" data-alert-id="${alertId}">
+                <i class="bi bi-arrow-repeat"></i> إعادة فتح
+            </button>
+        `;
+
+                // إضافة رسالة الحل
+                const resolvedDiv = document.createElement('div');
+                resolvedDiv.className = 'mt-2 p-2 bg-success text-white rounded';
+                resolvedDiv.innerHTML = `
+            <small>
+                <i class="bi bi-check-circle"></i>
+                تم الحل بواسطة {{ user.get_full_name|default:user.username }}
+                في ${new Date().toLocaleString('ar-SA')}
+            </small>
+        `;
+                alertCard.querySelector('.row.align-items-center .col-md-8').appendChild(resolvedDiv);
+
+                alert('تم حل التنبيه بنجاح');
+                updateStats();
+            }
+
+            function acknowledgeAlert(alertId) {
+                // محاكاة إقرار التنبيه
+                const btn = document.querySelector(`.acknowledge-alert[data-alert-id="${alertId}"]`);
+                btn.disabled = true;
+                btn.innerHTML = '<i class="bi bi-check"></i> تم الإقرار';
+                btn.classList.remove('btn-outline-warning');
+                btn.classList.add('btn-success');
+
+                alert('تم الإقرار بالتنبيه');
+            }
+
+            function reopenAlert(alertId) {
+                // محاكاة إعادة فتح التنبيه
+                const alertCard = document.querySelector(`.reopen-alert[data-alert-id="${alertId}"]`).closest('.alert-card');
+                alertCard.classList.remove('resolved');
+
+                // إزالة رسالة الحل
+                const resolvedDiv = alertCard.querySelector('.bg-success');
+                if (resolvedDiv) {
+                    resolvedDiv.remove();
+                }
+
+                // تحديث الواجهة
+                const buttonGroup = alertCard.querySelector('.btn-group-vertical');
+                buttonGroup.innerHTML = `
+            <button class="btn btn-sm btn-success resolve-alert" data-alert-id="${alertId}">
+                <i class="bi bi-check-lg"></i> تم الحل
+            </button>
+            <button class="btn btn-sm btn-outline-warning acknowledge-alert" data-alert-id="${alertId}">
+                <i class="bi bi-eye"></i> إقرار
+            </button>
+            <a href="{% url 'products:product_detail' 0 %}" class="btn btn-sm btn-outline-info">
+                <i class="bi bi-box"></i> المنتج
+            </a>
+        `;
+
+                alert('تم إعادة فتح التنبيه');
+                updateStats();
+            }
+
+            function resolveAllCriticalAlerts() {
+                // محاكاة حل جميع التنبيهات الحرجة
+                document.querySelectorAll('.alert-critical:not(.resolved)').forEach(alertCard => {
+                    const alertId = alertCard.querySelector('.resolve-alert').dataset.alertId;
+                    resolveAlert(alertId);
+                });
+            }
+
+            function acknowledgeAllAlerts() {
+                // محاكاة إقرار جميع التنبيهات
+                document.querySelectorAll('.acknowledge-alert:not(:disabled)').forEach(btn => {
+                    const alertId = btn.dataset.alertId;
+                    acknowledgeAlert(alertId);
+                });
+            }
+
+            function updateStats() {
+                // محاكاة تحديث الإحصائيات
+                location.reload(); // في التطبيق الحقيقي: تحديث البيانات فقط
+            }
+
+            // البحث والفلترة
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'form-control form-control-sm';
+            searchInput.placeholder = 'البحث في التنبيهات...';
+            searchInput.style.marginLeft = '1rem';
+
+            const tabs = document.querySelector('.filter-tabs');
+            tabs.parentNode.insertBefore(searchInput, tabs.nextSibling);
+
+            searchInput.addEventListener('input', function () {
+                const query = this.value.toLowerCase();
+                const alertCards = document.querySelectorAll('.alert-card');
+
+                alertCards.forEach(card => {
+                    const productName = card.querySelector('h6').textContent.toLowerCase();
+                    const message = card.querySelector('p').textContent.toLowerCase();
+
+                    if (productName.includes(query) || message.includes(query)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+
+            // تحديث تلقائي للتنبيهات
+            function refreshAlerts() {
+                // في التطبيق الحقيقي: طلب AJAX للتحديث
+                console.log('جارٍ تحديث التنبيهات...');
+            }
+
+            // تحديث كل 30 ثانية
+            setInterval(refreshAlerts, 30000);
+        });
+    </script>
+{% endblock %}

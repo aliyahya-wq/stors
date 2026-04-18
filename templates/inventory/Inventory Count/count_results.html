@@ -1,0 +1,716 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}نتائج الجرد - {{ count.count_name }}{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .results-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .variance-card {
+            border-left: 4px solid #dc3545;
+            background: #fff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .variance-card.positive {
+            border-left-color: #28a745;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .summary-item {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .action-buttons .btn {
+            margin: 0.25rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">نتائج الجرد: {{ count.count_name }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:inventory_count' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <!-- رأس النتائج -->
+    <div class="results-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-3">{{ count.count_name }}</h2>
+                <p class="mb-4">
+                    <i class="bi bi-building"></i> {{ count.warehouse.name }}
+                    {% if count.category %}
+                        | <i class="bi bi-tags"></i> {{ count.category.name }}
+                    {% endif %}
+                    | <i class="bi bi-calendar"></i> {{ count.planned_date|date:"Y/m/d" }}
+                </p>
+
+                <div class="summary-grid">
+                    <div class="stat-card">
+                        <div class="h3">{{ count.total_items }}</div>
+                        <div class="small">إجمالي العناصر</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="h3">{{ count.counted_items }}</div>
+                        <div class="small">تم العد</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="h3">{{ count.variance_count }}</div>
+                        <div class="small">الفروقات</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="h3">{{ accuracy_rate|floatformat:1 }}%</div>
+                        <div class="small">معدل الدقة</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 text-center">
+                <div class="mb-3">
+                    <div class="h1 {% if total_variance_value >= 0 %}text-success{% else %}text-warning{% endif %}">
+                        {{ total_variance_value|floatformat:2 }}
+                    </div>
+                    <div class="small">صافي قيمة الفروقات</div>
+                </div>
+                <span class="badge bg-success fs-6">مكتمل</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- تحليل الفروقات -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">تحليل الفروقات</h5>
+                    <div class="action-buttons">
+                        <button class="btn btn-sm btn-outline-primary" id="export-results">
+                            <i class="bi bi-download"></i> تصدير
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="collapse"
+                                data-bs-target="#filtersCollapse">
+                            <i class="bi bi-funnel"></i> فلترة
+                        </button>
+                    </div>
+                </div>
+
+                <!-- فلترة الفروقات -->
+                <div class="collapse" id="filtersCollapse">
+                    <div class="card-body border-bottom">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm" id="varianceTypeFilter">
+                                    <option value="">جميع الفروقات</option>
+                                    <option value="positive">فائض (+)</option>
+                                    <option value="negative">نقص (-)</option>
+                                    <option value="zero">بدون فرق</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm" id="categoryFilter">
+                                    <option value="">جميع التصنيفات</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category.id }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" class="form-control form-control-sm" id="productFilter"
+                                       placeholder="بحث بالمنتج...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    {% if variance_items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="varianceTable">
+                                <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>المتوقع</th>
+                                    <th>الفعلي</th>
+                                    <th>الفارق</th>
+                                    <th>قيمة الفارق</th>
+                                    <th>نسبة الفارق</th>
+                                    <th>الموقع</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for item in variance_items %}
+                                    <tr class="{% if item.variance > 0 %}table-success{% elif item.variance < 0 %}table-danger{% endif %}">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if item.product.main_image %}
+                                                    <img src="{{ item.product.main_image.url }}"
+                                                         alt="{{ item.product.name }}"
+                                                         class="rounded me-2" width="40" height="40">
+                                                {% else %}
+                                                    <div class="bg-light rounded d-flex align-items-center justify-content-center me-2"
+                                                         style="width: 40px; height: 40px;">
+                                                        <i class="bi bi-image text-muted"></i>
+                                                    </div>
+                                                {% endif %}
+                                                <div>
+                                                    <strong>{{ item.product.name }}</strong>
+                                                    <div class="small text-muted">{{ item.product.sku }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <strong>{{ item.expected_quantity }}</strong>
+                                        </td>
+                                        <td>
+                                            <strong class="{% if item.actual_quantity > item.expected_quantity %}text-success{% elif item.actual_quantity < item.expected_quantity %}text-danger{% endif %}">
+                                                {{ item.actual_quantity }}
+                                            </strong>
+                                        </td>
+                                        <td>
+                                    <span class="badge {% if item.variance > 0 %}bg-success{% elif item.variance < 0 %}bg-danger{% else %}bg-secondary{% endif %}">
+                                        {% if item.variance > 0 %}+{% endif %}{{ item.variance }}
+                                    </span>
+                                        </td>
+                                        <td>
+                                            <strong class="{% if item.variance_value > 0 %}text-success{% elif item.variance_value < 0 %}text-danger{% endif %}">
+                                                {{ item.variance_value|floatformat:2 }} ر.س
+                                            </strong>
+                                        </td>
+                                        <td>
+                                            {% if item.expected_quantity > 0 %}
+                                                <span class="{% if item.variance_percentage > 10 %}text-danger{% elif item.variance_percentage > 5 %}text-warning{% else %}text-success{% endif %}">
+                                        {{ item.variance_percentage|floatformat:1 }}%
+                                    </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ item.storage_location.get_location_code|default:"-" }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-warning adjust-stock"
+                                                        data-product-id="{{ item.product.id }}"
+                                                        data-warehouse-id="{{ count.warehouse.id }}"
+                                                        data-expected="{{ item.expected_quantity }}"
+                                                        data-actual="{{ item.actual_quantity }}">
+                                                    <i class="bi bi-sliders"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info view-details"
+                                                        data-item-id="{{ item.id }}">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- ملخص الفروقات -->
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="summary-item bg-success text-white">
+                                    <div class="h4">+{{ positive_variance_count }}</div>
+                                    <div class="small">فروقات موجبة</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="summary-item bg-danger text-white">
+                                    <div class="h4">{{ negative_variance_count }}</div>
+                                    <div class="small">فروقات سالبة</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="summary-item bg-secondary text-white">
+                                    <div class="h4">{{ zero_variance_count }}</div>
+                                    <div class="small">بدون فرق</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                            <h5 class="text-success mt-3">لا توجد فروقات</h5>
+                            <p class="text-muted">جميع الكميات متطابقة مع المخزون المسجل</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- الرسوم البيانية -->
+            <div class="chart-container">
+                <h5 class="mb-4">تحليل مرئي للفروقات</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="varianceChart" height="250"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="valueChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- ملخص النتائج -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">ملخص النتائج</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>حالة الجرد:</strong></td>
+                            <td><span class="badge bg-success">مكتمل</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>تاريخ البدء:</strong></td>
+                            <td>{{ count.start_date|date:"Y/m/d H:i"|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>تاريخ الانتهاء:</strong></td>
+                            <td>{{ count.end_date|date:"Y/m/d H:i"|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>مدة الجرد:</strong></td>
+                            <td>
+                                {% if count.start_date and count.end_date %}
+                                    {{ count.start_date|timesince:count.end_date }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>تم الجرد بواسطة:</strong></td>
+                            <td>{{ count.conducted_by.get_full_name|default:count.conducted_by.username|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>معدل الدقة:</strong></td>
+                            <td>
+                            <span class="badge
+                                {% if accuracy_rate >= 95 %}bg-success
+                                {% elif accuracy_rate >= 90 %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                {{ accuracy_rate|floatformat:1 }}%
+                            </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- تحليل القيمة -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">تحليل القيمة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">إجمالي قيمة المخزون المتوقع</small>
+                        <strong class="h5">{{ total_expected_value|floatformat:2 }} ر.س</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">إجمالي قيمة المخزون الفعلي</small>
+                        <strong class="h5">{{ total_actual_value|floatformat:2 }} ر.س</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">صافي الفروقات</small>
+                        <strong class="h5 {% if total_variance_value >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ total_variance_value|floatformat:2 }} ر.س
+                        </strong>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">نسبة الفروقات</small>
+                        <strong class="h5 {% if variance_percentage < 1 %}text-success{% elif variance_percentage < 3 %}text-warning{% else %}text-danger{% endif %}">
+                            {{ variance_percentage|floatformat:2 }}%
+                        </strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- إجراءات المعالجة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات المعالجة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" id="auto-adjust-btn">
+                            <i class="bi bi-robot"></i>
+                            تسوية تلقائية
+                        </button>
+                        <button class="btn btn-warning" id="review-btn">
+                            <i class="bi bi-search"></i>
+                            مراجعة الفروقات
+                        </button>
+                        <button class="btn btn-info" id="generate-report-btn">
+                            <i class="bi bi-file-earmark-text"></i>
+                            إنشاء تقرير
+                        </button>
+                        <a href="{% url 'inventory:inventory_count' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i>
+                            جرد جديد
+                        </a>
+                    </div>
+
+                    <!-- خيارات التسوية -->
+                    <div class="mt-3 p-3 bg-light rounded" id="adjustment-options" style="display: none;">
+                        <h6 class="mb-3">خيارات التسوية</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="adjustmentType" id="adjustAll"
+                                   value="all" checked>
+                            <label class="form-check-label" for="adjustAll">
+                                تسوية جميع الفروقات
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="adjustmentType" id="adjustPositive"
+                                   value="positive">
+                            <label class="form-check-label" for="adjustPositive">
+                                التسويات الموجبة فقط
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="adjustmentType" id="adjustNegative"
+                                   value="negative">
+                            <label class="form-check-label" for="adjustNegative">
+                                التسويات السالبة فقط
+                            </label>
+                        </div>
+                        <button class="btn btn-primary w-100" id="confirm-adjustment">
+                            تأكيد التسوية
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال تفاصيل الفارق -->
+    <div class="modal fade" id="detailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تفاصيل الفارق</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detailsContent">
+                    <!-- سيتم تحميل المحتوى ديناميكياً -->
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // الرسوم البيانية
+            const varianceCtx = document.getElementById('varianceChart').getContext('2d');
+            const valueCtx = document.getElementById('valueChart').getContext('2d');
+
+            // رسم بياني لتوزيع الفروقات
+            const varianceChart = new Chart(varianceCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['فائض (+)', 'نقص (-)', 'بدون فرق'],
+                    datasets: [{
+                        data: [
+                            {{ positive_variance_count }},
+                            {{ negative_variance_count }},
+                            {{ zero_variance_count }}
+                        ],
+                        backgroundColor: ['#28a745', '#dc3545', '#6c757d'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true
+                        },
+                        title: {
+                            display: true,
+                            text: 'توزيع الفروقات'
+                        }
+                    }
+                }
+            });
+
+            // رسم بياني لقيم الفروقات
+            const valueChart = new Chart(valueCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['فائض', 'نقص'],
+                    datasets: [{
+                        label: 'قيمة الفروقات (ر.س)',
+                        data: [
+                            {{ positive_variance_value|floatformat:2 }},
+                            {{ negative_variance_value|floatformat:2 }}
+                        ],
+                        backgroundColor: ['#28a745', '#dc3545'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'قيم الفروقات'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return value + ' ر.س';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // فلترة الجدول
+            document.getElementById('varianceTypeFilter').addEventListener('change', filterTable);
+            document.getElementById('categoryFilter').addEventListener('change', filterTable);
+            document.getElementById('productFilter').addEventListener('input', filterTable);
+
+            function filterTable() {
+                const varianceType = document.getElementById('varianceTypeFilter').value;
+                const categoryFilter = document.getElementById('categoryFilter').value;
+                const productFilter = document.getElementById('productFilter').value.toLowerCase();
+
+                const rows = document.querySelectorAll('#varianceTable tbody tr');
+
+                rows.forEach(row => {
+                    const variance = parseInt(row.querySelector('.badge').textContent);
+                    const productName = row.querySelector('strong').textContent.toLowerCase();
+
+                    let show = true;
+
+                    // فلترة نوع الفارق
+                    if (varianceType === 'positive' && variance <= 0) show = false;
+                    if (varianceType === 'negative' && variance >= 0) show = false;
+                    if (varianceType === 'zero' && variance !== 0) show = false;
+
+                    // فلترة البحث
+                    if (productFilter && !productName.includes(productFilter)) {
+                        show = false;
+                    }
+
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+
+            // إجراءات المعالجة
+            document.getElementById('auto-adjust-btn').addEventListener('click', function () {
+                document.getElementById('adjustment-options').style.display = 'block';
+            });
+
+            document.getElementById('confirm-adjustment').addEventListener('click', function () {
+                const adjustmentType = document.querySelector('input[name="adjustmentType"]:checked').value;
+
+                if (confirm(`هل تريد تنفيذ التسوية ${getAdjustmentTypeText(adjustmentType)}؟`)) {
+                    // محاكاة التسوية التلقائية
+                    showLoading('جاري تنفيذ التسوية...');
+
+                    setTimeout(() => {
+                        alert('تم تنفيذ التسوية بنجاح');
+                        document.getElementById('adjustment-options').style.display = 'none';
+                        location.reload(); // في التطبيق الحقيقي: إعادة تحميل البيانات
+                    }, 2000);
+                }
+            });
+
+            function getAdjustmentTypeText(type) {
+                const types = {
+                    'all': 'لجميع الفروقات',
+                    'positive': 'للفروقات الموجبة فقط',
+                    'negative': 'للفروقات السالبة فقط'
+                };
+                return types[type] || '';
+            }
+
+            document.getElementById('review-btn').addEventListener('click', function () {
+                alert('فتح صفحة مراجعة الفروقات التفصيلية');
+                // في التطبيق الحقيقي: توجيه إلى صفحة المراجعة
+            });
+
+            document.getElementById('generate-report-btn').addEventListener('click', function () {
+                showLoading('جاري إنشاء التقرير...');
+
+                setTimeout(() => {
+                    alert('تم إنشاء التقرير بنجاح');
+                    // في التطبيق الحقيقي: تحميل التقرير
+                }, 1500);
+            });
+
+            document.getElementById('export-results').addEventListener('click', function () {
+                alert('جارٍ تصدير النتائج...');
+                // في التطبيق الحقيقي: تصدير إلى Excel أو PDF
+            });
+
+            // تسوية المخزون لمنتج محدد
+            document.querySelectorAll('.adjust-stock').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const productId = this.dataset.productId;
+                    const warehouseId = this.dataset.warehouseId;
+                    const expected = this.dataset.expected;
+                    const actual = this.dataset.actual;
+
+                    if (confirm(`هل تريد تسوية المخزون لهذا المنتج؟\nالمتوقع: ${expected} | الفعلي: ${actual}`)) {
+                        showLoading('جاري تسوية المخزون...');
+
+                        setTimeout(() => {
+                            alert('تم تسوية المخزون بنجاح');
+                            this.closest('tr').classList.add('table-secondary');
+                            this.disabled = true;
+                        }, 1500);
+                    }
+                });
+            });
+
+            // عرض التفاصيل
+            document.querySelectorAll('.view-details').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const itemId = this.dataset.itemId;
+                    showItemDetails(itemId);
+                });
+            });
+
+            function showItemDetails(itemId) {
+                // محاكاة تحميل التفاصيل
+                const detailsContent = `
+            <div class="text-center">
+                <i class="bi bi-graph-up text-primary" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">تفاصيل الفارق</h5>
+            </div>
+            <table class="table table-bordered mt-3">
+                <tr>
+                    <td><strong>المنتج:</strong></td>
+                    <td>سامسونج جالاكسي S24</td>
+                </tr>
+                <tr>
+                    <td><strong>SKU:</strong></td>
+                    <td>SM-S24-001</td>
+                </tr>
+                <tr>
+                    <td><strong>المخزن:</strong></td>
+                    <td>${'{{ count.warehouse.name }}'}</td>
+                </tr>
+                <tr>
+                    <td><strong>المتوقع:</strong></td>
+                    <td>150 وحدة</td>
+                </tr>
+                <tr>
+                    <td><strong>الفعلي:</strong></td>
+                    <td>145 وحدة</td>
+                </tr>
+                <tr>
+                    <td><strong>الفارق:</strong></td>
+                    <td><span class="badge bg-danger">-5</span></td>
+                </tr>
+                <tr>
+                    <td><strong>قيمة الفارق:</strong></td>
+                    <td class="text-danger">-2,500 ر.س</td>
+                </tr>
+            </table>
+            <div class="mt-3">
+                <h6>التوصيات:</h6>
+                <ul>
+                    <li>مراجعة حركات المخزون الأخيرة</li>
+                    <li>فحص سجلات المبيعات والمشتريات</li>
+                    <li>التأكد من دقة عمليات الجرد السابقة</li>
+                </ul>
+            </div>
+        `;
+
+                document.getElementById('detailsContent').innerHTML = detailsContent;
+                new bootstrap.Modal(document.getElementById('detailsModal')).show();
+            }
+
+            function showLoading(message) {
+                // محاكاة شاشة التحميل
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'text-center py-4';
+                loadingDiv.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">جار التحميل...</span>
+            </div>
+            <p class="mt-2">${message}</p>
+        `;
+
+                document.body.appendChild(loadingDiv);
+                setTimeout(() => {
+                    document.body.removeChild(loadingDiv);
+                }, 2000);
+            }
+
+            // طباعة التقرير
+            document.addEventListener('keydown', function (e) {
+                if (e.ctrlKey && e.key === 'p') {
+                    e.preventDefault();
+                    alert('جارٍ تحضير التقرير للطباعة...');
+                    window.print();
+                }
+            });
+        });
+    </script>
+{% endblock %}

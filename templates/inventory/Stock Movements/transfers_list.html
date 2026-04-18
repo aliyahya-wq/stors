@@ -1,0 +1,506 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تحويلات المخزون - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .transfer-card {
+            border-left: 4px solid #ffc107;
+            background: #fff;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: all 0.3s ease;
+        }
+
+        .transfer-card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .transfer-pending {
+            border-left-color: #6c757d;
+        }
+
+        .transfer-in-transit {
+            border-left-color: #17a2b8;
+        }
+
+        .transfer-completed {
+            border-left-color: #28a745;
+        }
+
+        .transfer-cancelled {
+            border-left-color: #dc3545;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .progress-track {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .progress-track::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e9ecef;
+            transform: translateY(-50%);
+        }
+
+        .track-step {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            flex: 1;
+        }
+
+        .track-step.active .step-dot {
+            background: #28a745;
+            border-color: #28a745;
+        }
+
+        .step-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #e9ecef;
+            margin: 0 auto 0.5rem;
+        }
+
+        .step-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">تحويلات المخزون</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:movement_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>
+                تحويل جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-primary text-white">
+                <div class="card-body">
+                    <div class="number">{{ total_transfers }}</div>
+                    <div class="label">إجمالي التحويلات</div>
+                    <i class="bi bi-arrow-left-right fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-warning text-white">
+                <div class="card-body">
+                    <div class="number">{{ pending_transfers }}</div>
+                    <div class="label">معلقة</div>
+                    <i class="bi bi-clock fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-info text-white">
+                <div class="card-body">
+                    <div class="number">{{ in_transit_transfers }}</div>
+                    <div class="label">قيد النقل</div>
+                    <i class="bi bi-truck fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-success text-white">
+                <div class="card-body">
+                    <div class="number">{{ completed_transfers }}</div>
+                    <div class="label">مكتملة</div>
+                    <i class="bi bi-check-circle fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-danger text-white">
+                <div class="card-body">
+                    <div class="number">{{ cancelled_transfers }}</div>
+                    <div class="label">ملغاة</div>
+                    <i class="bi bi-x-circle fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="number">{{ total_quantity }}</div>
+                    <div class="label">إجمالي الكمية</div>
+                    <i class="bi bi-box fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">قائمة التحويلات</h5>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" id="statusFilter" style="width: 150px;">
+                            <option value="">جميع الحالات</option>
+                            <option value="pending">معلقة</option>
+                            <option value="in_transit">قيد النقل</option>
+                            <option value="completed">مكتملة</option>
+                            <option value="cancelled">ملغاة</option>
+                        </select>
+                        <input type="date" class="form-control form-control-sm" id="dateFilter">
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if transfers %}
+                        {% for transfer in transfers %}
+                            <div class="transfer-card transfer-{{ transfer.status }}"
+                                 data-status="{{ transfer.status }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <h6 class="mb-1">{{ transfer.product.name }}</h6>
+                                                <p class="text-muted small mb-2">
+                                                    {{ transfer.from_warehouse.name }}
+                                                    <i class="bi bi-arrow-right mx-2"></i>
+                                                    {{ transfer.to_warehouse.name }}
+                                                </p>
+                                            </div>
+                                            <span class="status-badge badge
+                                        {% if transfer.status == 'pending' %}bg-secondary
+                                        {% elif transfer.status == 'in_transit' %}bg-info
+                                        {% elif transfer.status == 'completed' %}bg-success
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ transfer.get_status_display }}
+                                    </span>
+                                        </div>
+
+                                        <!-- تتبع التقدم -->
+                                        <div class="progress-track">
+                                            <div class="track-step {% if transfer.status != 'cancelled' %}active{% endif %}">
+                                                <div class="step-dot"></div>
+                                                <div class="step-label">مطلوب</div>
+                                            </div>
+                                            <div class="track-step {% if transfer.status == 'in_transit' or transfer.status == 'completed' %}active{% endif %}">
+                                                <div class="step-dot"></div>
+                                                <div class="step-label">قيد النقل</div>
+                                            </div>
+                                            <div class="track-step {% if transfer.status == 'completed' %}active{% endif %}">
+                                                <div class="step-dot"></div>
+                                                <div class="step-label">مستلم</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <small class="text-muted d-block">الكمية</small>
+                                                <strong>{{ transfer.quantity }}</strong>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted d-block">تاريخ التحويل</small>
+                                                <strong>{{ transfer.transfer_date|date:"Y/m/d" }}</strong>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted d-block">المستخدم</small>
+                                                <strong>{{ transfer.created_by.get_full_name|default:transfer.created_by.username }}</strong>
+                                            </div>
+                                        </div>
+
+                                        {% if transfer.notes %}
+                                            <div class="mt-2 p-2 bg-light rounded">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-chat-left-text"></i>
+                                                    {{ transfer.notes }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4 text-end">
+                                        <div class="btn-group-vertical">
+                                            {% if transfer.status == 'pending' %}
+                                                <button class="btn btn-sm btn-success approve-transfer"
+                                                        data-transfer-id="{{ transfer.id }}">
+                                                    <i class="bi bi-check-lg"></i> اعتماد
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger cancel-transfer"
+                                                        data-transfer-id="{{ transfer.id }}">
+                                                    <i class="bi bi-x-lg"></i> إلغاء
+                                                </button>
+                                            {% elif transfer.status == 'in_transit' %}
+                                                <button class="btn btn-sm btn-success complete-transfer"
+                                                        data-transfer-id="{{ transfer.id }}">
+                                                    <i class="bi bi-check-lg"></i> استلام
+                                                </button>
+                                            {% endif %}
+                                            <button class="btn btn-sm btn-outline-info view-transfer"
+                                                    data-transfer-id="{{ transfer.id }}">
+                                                <i class="bi bi-eye"></i> تفاصيل
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-arrow-left-right text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="text-muted mt-3">لا توجد تحويلات</h5>
+                            <p class="text-muted">ابدأ بإنشاء تحويلات بين المخازن</p>
+                            <a href="{% url 'inventory:movement_create' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i>
+                                تحويل جديد
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    <!-- الترقيم -->
+                    {% if transfers.has_other_pages %}
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if transfers.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link"
+                                           href="?page={{ transfers.previous_page_number }}">السابق</a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in transfers.paginator.page_range %}
+                                    {% if transfers.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if transfers.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ transfers.next_page_number }}">التالي</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- إحصائيات التحويلات -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات التحويلات</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="transfersChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- المسارات النشطة -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">المسارات النشطة</h6>
+                </div>
+                <div class="card-body">
+                    {% for route in active_routes %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <div>
+                                <strong class="small">{{ route.from_warehouse }} → {{ route.to_warehouse }}</strong>
+                                <div class="text-muted">{{ route.transfer_count }} تحويل</div>
+                            </div>
+                            <span class="badge bg-success">{{ route.total_quantity }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted text-center small">لا توجد مسارات نشطة</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'inventory:movement_create' %}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i>
+                            تحويل جديد
+                        </a>
+                        <a href="{% url 'inventory:stock_movements' %}" class="btn btn-outline-info">
+                            <i class="bi bi-arrow-left-right"></i>
+                            عرض جميع الحركات
+                        </a>
+                        <a href="{% url 'inventory:inventory_list' %}" class="btn btn-outline-warning">
+                            <i class="bi bi-box"></i>
+                            إدارة المخزون
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // رسم بياني للتحويلات
+            const ctx = document.getElementById('transfersChart').getContext('2d');
+            const transfersChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['معلقة', 'قيد النقل', 'مكتملة', 'ملغاة'],
+                    datasets: [{
+                        data: [
+                            {{ pending_transfers }},
+                            {{ in_transit_transfers }},
+                            {{ completed_transfers }},
+                            {{ cancelled_transfers }}
+                        ],
+                        backgroundColor: [
+                            '#6c757d',
+                            '#17a2b8',
+                            '#28a745',
+                            '#dc3545'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true
+                        }
+                    }
+                }
+            });
+
+            // فلترة التحويلات
+            document.getElementById('statusFilter').addEventListener('change', filterTransfers);
+            document.getElementById('dateFilter').addEventListener('change', filterTransfers);
+
+            function filterTransfers() {
+                const statusFilter = document.getElementById('statusFilter').value;
+                const dateFilter = document.getElementById('dateFilter').value;
+
+                const transferCards = document.querySelectorAll('.transfer-card');
+
+                transferCards.forEach(card => {
+                    const status = card.dataset.status;
+                    const transferDate = card.querySelector('.row.text-center .col-4:nth-child(2) strong').textContent;
+
+                    let show = true;
+
+                    if (statusFilter && status !== statusFilter) {
+                        show = false;
+                    }
+
+                    if (dateFilter) {
+                        const cardDate = new Date(transferDate);
+                        const filterDate = new Date(dateFilter);
+                        if (cardDate.toDateString() !== filterDate.toDateString()) {
+                            show = false;
+                        }
+                    }
+
+                    card.style.display = show ? 'block' : 'none';
+                });
+            }
+
+            // إدارة التحويلات
+            document.querySelectorAll('.approve-transfer').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const transferId = this.dataset.transferId;
+                    if (confirm('هل تريد اعتماد هذا التحويل؟')) {
+                        // محاكاة اعتماد التحويل
+                        this.closest('.transfer-card').querySelector('.status-badge').className = 'status-badge badge bg-info';
+                        this.closest('.transfer-card').querySelector('.status-badge').textContent = 'قيد النقل';
+                        this.closest('.btn-group-vertical').innerHTML = `
+                    <button class="btn btn-sm btn-success complete-transfer" data-transfer-id="${transferId}">
+                        <i class="bi bi-check-lg"></i> استلام
+                    </button>
+                    <button class="btn btn-sm btn-outline-info view-transfer" data-transfer-id="${transferId}">
+                        <i class="bi bi-eye"></i> تفاصيل
+                    </button>
+                `;
+                        alert('تم اعتماد التحويل بنجاح');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.complete-transfer').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const transferId = this.dataset.transferId;
+                    if (confirm('هل تريد تأكيد استلام هذا التحويل؟')) {
+                        // محاكاة استلام التحويل
+                        this.closest('.transfer-card').querySelector('.status-badge').className = 'status-badge badge bg-success';
+                        this.closest('.transfer-card').querySelector('.status-badge').textContent = 'مكتمل';
+                        this.closest('.btn-group-vertical').innerHTML = `
+                    <button class="btn btn-sm btn-outline-info view-transfer" data-transfer-id="${transferId}">
+                        <i class="bi bi-eye"></i> تفاصيل
+                    </button>
+                `;
+                        alert('تم استلام التحويل بنجاح');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.cancel-transfer').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const transferId = this.dataset.transferId;
+                    if (confirm('هل تريد إلغاء هذا التحويل؟')) {
+                        // محاكاة إلغاء التحويل
+                        this.closest('.transfer-card').querySelector('.status-badge').className = 'status-badge badge bg-danger';
+                        this.closest('.transfer-card').querySelector('.status-badge').textContent = 'ملغي';
+                        this.closest('.btn-group-vertical').innerHTML = `
+                    <button class="btn btn-sm btn-outline-info view-transfer" data-transfer-id="${transferId}">
+                        <i class="bi bi-eye"></i> تفاصيل
+                    </button>
+                `;
+                        alert('تم إلغاء التحويل بنجاح');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.view-transfer').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const transferId = this.dataset.transferId;
+                    alert(`عرض تفاصيل التحويل #${transferId}`);
+                    // في التطبيق الحقيقي: توجيه إلى صفحة التفاصيل
+                });
+            });
+        });
+    </script>
+{% endblock %}

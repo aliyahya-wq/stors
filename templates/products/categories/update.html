@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تعديل {{ category.name }} - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border: 2px dashed #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 180px;
+            border-radius: 0.375rem;
+        }
+
+        .current-image {
+            border: 2px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">تعديل التصنيف: {{ category.name }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:category_detail' category.id %}" class="btn btn-outline-info me-2">
+                <i class="bi bi-eye"></i>
+                عرض
+            </a>
+            <a href="{% url 'products:category_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">معلومات التصنيف</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="category-form">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">اسم التصنيف *</label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                    <div class="text-danger small">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.parent.id_for_label }}" class="form-label">التصنيف الأب</label>
+                                {{ form.parent }}
+                                <div class="form-text">اختياري - اتركه فارغاً ليكون تصنيفاً رئيسياً</div>
+                                {% if form.parent.errors %}
+                                    <div class="text-danger small">{{ form.parent.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">الوصف</label>
+                            {{ form.description }}
+                            <div class="form-text">وصف مختصر للتصنيف وأهميته</div>
+                            {% if form.description.errors %}
+                                <div class="text-danger small">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.category_type.id_for_label }}" class="form-label">نوع
+                                    التصنيف</label>
+                                {{ form.category_type }}
+                                {% if form.category_type.errors %}
+                                    <div class="text-danger small">{{ form.category_type.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.image.id_for_label }}" class="form-label">صورة التصنيف</label>
+                                {{ form.image }}
+                                <div class="form-text">اختياري - سيتم استبدال الصورة الحالية</div>
+                                {% if form.image.errors %}
+                                    <div class="text-danger small">{{ form.image.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    تصنيف نشط
+                                </label>
+                            </div>
+                            <div class="form-text">التصنيفات غير النشطة لن تظهر في القوائم المنسدلة</div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'products:category_detail' category.id %}"
+                               class="btn btn-outline-secondary me-md-2">
+                                إلغاء
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i>
+                                حفظ التغييرات
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- الصورة الحالية -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">الصورة الحالية</h6>
+                </div>
+                <div class="card-body text-center">
+                    {% if category.image %}
+                        <div class="current-image mb-3">
+                            <img src="{{ category.image.url }}" alt="{{ category.name }}"
+                                 style="max-width: 100%; max-height: 150px; border-radius: 0.375rem;">
+                        </div>
+                        <small class="text-muted">الصورة الحالية للتصنيف</small>
+                    {% else %}
+                        <div class="text-muted">
+                            <i class="bi bi-image" style="font-size: 3rem;"></i>
+                            <p class="mt-2 mb-0">لا توجد صورة</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- معاينة الصورة الجديدة -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">معاينة الصورة الجديدة</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div id="image-preview" class="image-preview">
+                        <div class="text-muted">
+                            <i class="bi bi-image" style="font-size: 3rem;"></i>
+                            <p class="mt-2 mb-0">لم يتم اختيار صورة جديدة</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- معلومات التصنيف -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">معلومات التصنيف</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>عدد المنتجات:</strong></td>
+                            <td>{{ category.products.count }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>التصنيفات الفرعية:</strong></td>
+                            <td>{{ category.get_children.count }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>تاريخ الإنشاء:</strong></td>
+                            <td>{{ category.created_at|date:"Y/m/d" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>آخر تحديث:</strong></td>
+                            <td>{{ category.updated_at|date:"Y/m/d H:i" }}</td>
+                        </tr>
+                    </table>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <a href="{% url 'products:product_create' %}?category={{ category.id }}"
+                           class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-plus-lg"></i>
+                            إضافة منتج جديد
+                        </a>
+                        {% if category.get_children.exists %}
+                            <a href="{% url 'products:category_list' %}#subcategories-{{ category.id }}"
+                               class="btn btn-outline-info btn-sm">
+                                <i class="bi bi-folder"></i>
+                                عرض التصنيفات الفرعية
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // معاينة الصورة الجديدة
+            const imageInput = document.getElementById('id_image');
+            const imagePreview = document.getElementById('image-preview');
+
+            if (imageInput) {
+                imageInput.addEventListener('change', function () {
+                    const file = this.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            imagePreview.innerHTML = `<img src="${e.target.result}" alt="معاينة الصورة الجديدة">`;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        imagePreview.innerHTML = `
+                    <div class="text-muted">
+                        <i class="bi bi-image" style="font-size: 3rem;"></i>
+                        <p class="mt-2 mb-0">لم يتم اختيار صورة جديدة</p>
+                    </div>
+                `;
+                    }
+                });
+            }
+
+            // التحقق من عدم اختيار التصنيف الحالي كأب
+            const parentSelect = document.getElementById('id_parent');
+            if (parentSelect) {
+                parentSelect.addEventListener('change', function () {
+                    if (this.value == '{{ category.id }}') {
+                        alert('لا يمكن اختيار التصنيف الحالي كتصنيف أب');
+                        this.value = '';
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}

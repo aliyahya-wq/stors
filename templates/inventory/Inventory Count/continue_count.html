@@ -1,0 +1,579 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}متابعة الجرد - {{ count.count_name }}{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .counting-interface {
+            background: #f8f9fa;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .product-card {
+            background: white;
+            border: 2px solid #e3e6f0;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .product-card.counted {
+            border-color: #28a745;
+            background-color: rgba(40, 167, 69, 0.05);
+        }
+
+        .product-card.recount {
+            border-color: #ffc107;
+            background-color: rgba(255, 193, 7, 0.05);
+        }
+
+        .barcode-scanner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .quantity-input {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .progress-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+
+        .quick-actions .btn {
+            margin: 0.25rem;
+        }
+
+        .variance-badge {
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">متابعة الجرد: {{ count.count_name }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:inventory_count' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <!-- معلومات الجرد -->
+    <div class="progress-container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="mb-1">{{ count.count_name }}</h4>
+                        <p class="text-muted mb-0">
+                            <i class="bi bi-building"></i> {{ count.warehouse.name }}
+                            {% if count.category %}
+                                | <i class="bi bi-tags"></i> {{ count.category.name }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <span class="badge bg-info fs-6">{{ count.get_status_display }}</span>
+                </div>
+
+                <!-- شريط التقدم -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">تقدم الجرد</span>
+                        <span class="text-muted fw-bold">{{ count.progress_percentage|floatformat:1 }}%</span>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             style="width: {{ count.progress_percentage }}%">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <small class="text-muted">{{ count.counted_items }} من {{ count.total_items }} عنصر</small>
+                        <small class="text-muted">{{ count.variance_count }} فروقات</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 text-center">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-primary">
+                            <div class="h3 mb-1">{{ remaining_items }}</div>
+                            <div class="small">متبقي للعد</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-success">
+                            <div class="h3 mb-1">{{ count.counted_items }}</div>
+                            <div class="small">تم العد</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- ماسح الباركود -->
+            <div class="barcode-scanner">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="mb-3"><i class="bi bi-upc-scan"></i> مسح الباركود</h4>
+                        <p class="mb-3">قم بمسح باركود المنتج أو أدخل الرقم يدوياً</p>
+                        <div class="input-group input-group-lg">
+                            <input type="text" class="form-control" id="barcode-input"
+                                   placeholder="أدخل رقم الباركود..." autofocus>
+                            <button class="btn btn-light" type="button" id="scan-btn">
+                                <i class="bi bi-camera"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="bi bi-phone" style="font-size: 4rem; opacity: 0.8;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- واجهة العد -->
+            <div class="counting-interface">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="mb-3">المنتجات المطلوبة</h5>
+
+                        <!-- فلترة -->
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="product-filter"
+                                   placeholder="ابحث عن منتج...">
+                        </div>
+
+                        <!-- قائمة المنتجات -->
+                        <div style="max-height: 500px; overflow-y: auto;">
+                            {% for item in count_items %}
+                                <div class="product-card {% if item.status == 'counted' %}counted{% elif item.status == 'recount' %}recount{% endif %}"
+                                     data-product-id="{{ item.product.id }}" data-barcode="{{ item.product.barcode }}">
+                                    <div class="row align-items-center">
+                                        <div class="col-8">
+                                            <h6 class="mb-1">{{ item.product.name }}</h6>
+                                            <p class="text-muted small mb-1">
+                                                {{ item.product.sku }} | {{ item.batch_number|default:"-" }}
+                                            </p>
+                                            <div class="d-flex gap-2">
+                                                <span class="badge bg-secondary">{{ item.storage_location.get_location_code|default:"-" }}</span>
+                                                {% if item.status == 'counted' %}
+                                                    <span class="badge bg-success">تم العد</span>
+                                                {% elif item.status == 'recount' %}
+                                                    <span class="badge bg-warning">إعادة عد</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-4 text-end">
+                                            <div class="expected-quantity">
+                                                <small class="text-muted d-block">متوقع</small>
+                                                <strong>{{ item.expected_quantity }}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {% if item.status == 'counted' %}
+                                        <div class="mt-2 p-2 bg-light rounded">
+                                            <div class="row text-center">
+                                                <div class="col-6">
+                                                    <small class="text-muted">الكمية الفعلية</small>
+                                                    <div class="fw-bold text-success">{{ item.actual_quantity }}</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <small class="text-muted">الفارق</small>
+                                                    <div class="fw-bold {% if item.variance > 0 %}text-success{% else %}text-danger{% endif %}">
+                                                        {% if item.variance > 0 %}+{% endif %}{{ item.variance }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <!-- نموذج إدخال الكمية -->
+                        <div class="bg-white rounded p-4 sticky-top" style="top: 2rem;">
+                            <h5 class="mb-3" id="current-product">اختر منتجاً للعد</h5>
+
+                            <div class="product-info mb-4 d-none" id="product-details">
+                                <div class="text-center mb-3">
+                                    {% if selected_product.main_image %}
+                                        <img src="{{ selected_product.main_image.url }}"
+                                             alt="{{ selected_product.name }}"
+                                             class="rounded" width="80" height="80">
+                                    {% else %}
+                                        <div class="bg-light rounded d-flex align-items-center justify-content-center mx-auto"
+                                             style="width: 80px; height: 80px;">
+                                            <i class="bi bi-image text-muted"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>المنتج:</strong></td>
+                                        <td id="detail-name">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>SKU:</strong></td>
+                                        <td id="detail-sku">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>الموقع:</strong></td>
+                                        <td id="detail-location">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>المتوقع:</strong></td>
+                                        <td id="detail-expected" class="fw-bold">0</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <form method="post" id="count-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="count_item_id" id="count-item-id">
+
+                                <div class="mb-4">
+                                    <label class="form-label">الكمية الفعلية</label>
+                                    <input type="number" class="form-control quantity-input"
+                                           name="actual_quantity" id="actual-quantity"
+                                           min="0" step="1" required>
+                                </div>
+
+                                <!-- الفارق -->
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center p-3 rounded
+                                    {% if variance > 0 %}bg-success text-white
+                                    {% elif variance < 0 %}bg-danger text-white
+                                    {% else %}bg-light{% endif %}" id="variance-display">
+                                        <span>الفارق:</span>
+                                        <strong id="variance-value">0</strong>
+                                    </div>
+                                </div>
+
+                                <!-- الملاحظات -->
+                                <div class="mb-4">
+                                    <label class="form-label">ملاحظات العد</label>
+                                    <textarea class="form-control" name="notes" rows="3"
+                                              placeholder="ملاحظات حول العد..."></textarea>
+                                </div>
+
+                                <!-- الإجراءات -->
+                                <div class="quick-actions text-center">
+                                    <button type="submit" class="btn btn-success btn-lg me-2" id="save-btn">
+                                        <i class="bi bi-check-circle"></i>
+                                        حفظ
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-lg me-2" id="recount-btn">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                        إعادة عد
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-lg" id="skip-btn">
+                                        <i class="bi bi-skip-forward"></i>
+                                        تخطي
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- الإحصائيات -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات الجرد</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="text-primary">
+                                <div class="h4">{{ count.total_items }}</div>
+                                <div class="small">إجمالي العناصر</div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="text-success">
+                                <div class="h4">{{ count.counted_items }}</div>
+                                <div class="small">تم العد</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-warning">
+                                <div class="h4">{{ count.variance_count }}</div>
+                                <div class="small">فروقات</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-info">
+                                <div class="h4">{{ accuracy_rate|floatformat:1 }}%</div>
+                                <div class="small">معدل الدقة</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- الفروقات -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">آخر الفروقات</h6>
+                </div>
+                <div class="card-body">
+                    {% for item in recent_variances %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <div>
+                                <strong class="small">{{ item.product.name }}</strong>
+                                <div class="text-muted">{{ item.expected_quantity }} → {{ item.actual_quantity }}</div>
+                            </div>
+                            <span class="variance-badge badge {% if item.variance > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        {% if item.variance > 0 %}+{% endif %}{{ item.variance }}
+                    </span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted text-center small">لا توجد فروقات بعد</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" id="quick-save-btn">
+                            <i class="bi bi-save"></i>
+                            حفظ تلقائي
+                        </button>
+                        <button class="btn btn-outline-warning" id="pause-btn">
+                            <i class="bi bi-pause-circle"></i>
+                            إيقاف مؤقت
+                        </button>
+                        <a href="{% url 'inventory:count_results' count.id %}" class="btn btn-outline-success">
+                            <i class="bi bi-flag"></i>
+                            إنهاء الجرد
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const barcodeInput = document.getElementById('barcode-input');
+            const productFilter = document.getElementById('product-filter');
+            const productDetails = document.getElementById('product-details');
+            const actualQuantity = document.getElementById('actual-quantity');
+            const varianceDisplay = document.getElementById('variance-display');
+            const varianceValue = document.getElementById('variance-value');
+            const countForm = document.getElementById('count-form');
+            const countItemId = document.getElementById('count-item-id');
+            const saveBtn = document.getElementById('save-btn');
+
+            let currentProduct = null;
+            let expectedQuantity = 0;
+
+            // البحث بالباركود
+            barcodeInput.addEventListener('input', function () {
+                const barcode = this.value.trim();
+                if (barcode.length >= 3) {
+                    findProductByBarcode(barcode);
+                }
+            });
+
+            // فلترة المنتجات
+            productFilter.addEventListener('input', function () {
+                const query = this.value.toLowerCase();
+                const productCards = document.querySelectorAll('.product-card');
+
+                productCards.forEach(card => {
+                    const productName = card.querySelector('h6').textContent.toLowerCase();
+                    const productSku = card.querySelector('.text-muted').textContent.toLowerCase();
+
+                    if (productName.includes(query) || productSku.includes(query)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+
+            // اختيار منتج من القائمة
+            document.querySelectorAll('.product-card').forEach(card => {
+                card.addEventListener('click', function () {
+                    const productId = this.dataset.productId;
+                    selectProduct(productId);
+                });
+            });
+
+            function findProductByBarcode(barcode) {
+                // محاكاة البحث عن المنتج بالباركود
+                const productCard = document.querySelector(`.product-card[data-barcode="${barcode}"]`);
+                if (productCard) {
+                    selectProduct(productCard.dataset.productId);
+                    barcodeInput.value = '';
+                }
+            }
+
+            function selectProduct(productId) {
+                const productCard = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+
+                if (productCard) {
+                    // تحديث الواجهة
+                    document.querySelectorAll('.product-card').forEach(card => {
+                        card.classList.remove('active');
+                    });
+                    productCard.classList.add('active');
+
+                    // تحديث معلومات المنتج
+                    const productName = productCard.querySelector('h6').textContent;
+                    const productSku = productCard.querySelector('.text-muted').textContent.split(' | ')[0];
+                    const location = productCard.querySelector('.badge.bg-secondary').textContent;
+                    expectedQuantity = parseInt(productCard.querySelector('.expected-quantity strong').textContent);
+
+                    document.getElementById('current-product').textContent = productName;
+                    document.getElementById('detail-name').textContent = productName;
+                    document.getElementById('detail-sku').textContent = productSku;
+                    document.getElementById('detail-location').textContent = location;
+                    document.getElementById('detail-expected').textContent = expectedQuantity;
+
+                    productDetails.classList.remove('d-none');
+                    actualQuantity.focus();
+
+                    // تعيين معرف عنصر الجرد
+                    countItemId.value = productId;
+
+                    currentProduct = {
+                        id: productId,
+                        name: productName,
+                        expected: expectedQuantity
+                    };
+                }
+            }
+
+            // حساب الفارق
+            actualQuantity.addEventListener('input', function () {
+                const actual = parseInt(this.value) || 0;
+                const variance = actual - expectedQuantity;
+
+                varianceValue.textContent = variance > 0 ? `+${variance}` : variance;
+
+                // تحديث الألوان
+                varianceDisplay.className = 'd-flex justify-content-between align-items-center p-3 rounded';
+                if (variance > 0) {
+                    varianceDisplay.classList.add('bg-success', 'text-white');
+                } else if (variance < 0) {
+                    varianceDisplay.classList.add('bg-danger', 'text-white');
+                } else {
+                    varianceDisplay.classList.add('bg-light');
+                }
+            });
+
+            // حفظ العد
+            countForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                if (!currentProduct) {
+                    alert('يرجى اختيار منتج أولاً');
+                    return;
+                }
+
+                const actual = parseInt(actualQuantity.value);
+                if (isNaN(actual) || actual < 0) {
+                    alert('يرجى إدخال كمية صحيحة');
+                    return;
+                }
+
+                // محاكاة الحفظ
+                const productCard = document.querySelector(`.product-card[data-product-id="${currentProduct.id}"]`);
+                productCard.classList.add('counted');
+
+                // تحديث العداد
+                const countedItems = parseInt('{{ count.counted_items }}') + 1;
+                document.querySelector('.progress-bar').style.width = `${(countedItems / {{ count.total_items }} * 100)}%`;
+
+                alert('تم حفظ العد بنجاح');
+                resetForm();
+            });
+
+            function resetForm() {
+                actualQuantity.value = '';
+                varianceValue.textContent = '0';
+                varianceDisplay.className = 'd-flex justify-content-between align-items-center p-3 rounded bg-light';
+                productDetails.classList.add('d-none');
+                document.getElementById('current-product').textContent = 'اختر منتجاً للعد';
+                currentProduct = null;
+            }
+
+            // الإجراءات السريعة
+            document.getElementById('recount-btn').addEventListener('click', function () {
+                if (currentProduct) {
+                    const productCard = document.querySelector(`.product-card[data-product-id="${currentProduct.id}"]`);
+                    productCard.classList.add('recount');
+                    productCard.classList.remove('counted');
+                    alert('تم طلب إعادة العد');
+                }
+            });
+
+            document.getElementById('skip-btn').addEventListener('click', function () {
+                resetForm();
+            });
+
+            document.getElementById('quick-save-btn').addEventListener('click', function () {
+                // محاكاة الحفظ التلقائي
+                alert('تم الحفظ التلقائي للبيانات');
+            });
+
+            document.getElementById('pause-btn').addEventListener('click', function () {
+                if (confirm('هل تريد إيقاف الجرد مؤقتاً؟ سيتم حفظ التقدم الحالي.')) {
+                    alert('تم إيقاف الجرد مؤقتاً');
+                    // في التطبيق الحقيقي: حفظ الحالة وإعادة التوجيه
+                }
+            });
+
+            // المسح بالكاميرا (محاكاة)
+            document.getElementById('scan-btn').addEventListener('click', function () {
+                alert('جارٍ تشغيل الكاميرا للمسح...');
+                // في التطبيق الحقيقي: تفعيل واجهة الكاميرا
+            });
+
+            // الحفظ التلقائي عند الخروج
+            window.addEventListener('beforeunload', function (e) {
+                if (currentProduct && actualQuantity.value) {
+                    e.preventDefault();
+                    e.returnValue = 'لديك بيانات غير محفوظة. هل تريد المغادرة؟';
+                }
+            });
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}لوحة التحكم - نظام المخزون{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">لوحة تحكم المخزون</h1>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-primary">{{ total_products }}</div>
+                    <div class="label">إجمالي المنتجات</div>
+                    <i class="bi bi-box fs-1 text-primary opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-success">{{ total_categories }}</div>
+                    <div class="label">التصنيفات</div>
+                    <i class="bi bi-tags fs-1 text-success opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-warning">{{ total_warehouses }}</div>
+                    <div class="label">المخازن</div>
+                    <i class="bi bi-building fs-1 text-warning opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-danger">{{ low_stock_alerts }}</div>
+                    <div class="label">تنبيهات المخزون</div>
+                    <i class="bi bi-exclamation-triangle fs-1 text-danger opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- المنتجات منخفضة المخزون -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">المنتجات منخفضة المخزون</h5>
+                    <a href="{% url 'products:stock_alerts' %}" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+                </div>
+                <div class="card-body">
+                    {% if low_stock_products %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>المخزون الحالي</th>
+                                    <th>الحد الأدنى</th>
+                                    <th>الحالة</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for item in low_stock_products %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'products:product_detail' pk=item.product.pk %}">
+                                                {{ item.product.name }}
+                                            </a>
+                                        </td>
+                                        <td>{{ item.current_stock }}</td>
+                                        <td>{{ item.min_stock }}</td>
+                                        <td>
+                                            <span class="badge bg-danger">منخفض</span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">لا توجد منتجات منخفضة المخزون</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- آخر الحركات -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">آخر حركات المخزون</h5>
+                    <a href="{% url 'products:stock_movements' %}" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_movements %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>نوع الحركة</th>
+                                    <th>الكمية</th>
+                                    <th>التاريخ</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for movement in recent_movements %}
+                                    <tr>
+                                        <td>{{ movement.product.name }}</td>
+                                        <td>
+                                        <span class="badge 
+                                            {% if movement.movement_type == 'purchase' %}bg-success
+                                            {% elif movement.movement_type == 'sale' %}bg-danger
+                                            {% else %}bg-info{% endif %}">
+                                            {{ movement.get_movement_type_display }}
+                                        </span>
+                                        </td>
+                                        <td class="{% if movement.quantity > 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {% if movement.quantity > 0 %}+{% endif %}{{ movement.quantity }}
+                                        </td>
+                                        <td>{{ movement.created_at|date:"Y/m/d H:i" }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">لا توجد حركات حديثة</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- إجراءات سريعة -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">إجراءات سريعة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-2 col-6 mb-3">
+                            <a href="{% url 'products:product_create' %}" class="btn btn-outline-primary btn-lg w-100">
+                                <i class="bi bi-plus-circle fs-1 d-block mb-2"></i>
+                                إضافة منتج
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6 mb-3">
+                            <a href="{% url 'products:stock_adjustment' %}"
+                               class="btn btn-outline-warning btn-lg w-100">
+                                <i class="bi bi-sliders fs-1 d-block mb-2"></i>
+                                تسوية المخزون
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6 mb-3">
+                            <a href="{% url 'products:stock_transfer' %}" class="btn btn-outline-info btn-lg w-100">
+                                <i class="bi bi-arrow-left-right fs-1 d-block mb-2"></i>
+                                تحويل المخزون
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6 mb-3">
+                            <a href="{% url 'products:barcode_generator' %}"
+                               class="btn btn-outline-success btn-lg w-100">
+                                <i class="bi bi-upc-scan fs-1 d-block mb-2"></i>
+                                توليد باركود
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6 mb-3">
+                            <a href="{% url 'products:category_create' %}"
+                               class="btn btn-outline-secondary btn-lg w-100">
+                                <i class="bi bi-tag fs-1 d-block mb-2"></i>
+                                إضافة تصنيف
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6 mb-3">
+                            <a href="{% url 'products:stock_alerts' %}" class="btn btn-outline-danger btn-lg w-100">
+                                <i class="bi bi-bell fs-1 d-block mb-2"></i>
+                                التنبيهات
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

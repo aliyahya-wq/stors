@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}نظام إدارة المخزون{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3a0ca3;
+            --success: #4cc9f0;
+            --info: #4895ef;
+            --warning: #f72585;
+            --danger: #e63946;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --sidebar-bg: #1a1f36;
+            --sidebar-hover: #252b43;
+        }
+
+        body {
+            font-family: 'Tajawal', 'Segoe UI', sans-serif;
+            background-color: #f5f7fb;
+            color: #333;
+        }
+
+        /* الشريط الجانبي */
+        .sidebar {
+            background: var(--sidebar-bg);
+            min-height: 100vh;
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar .logo {
+            padding: 25px 20px;
+            text-align: center;
+            border-bottom: 1px solid #2d3748;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar .logo h4 {
+            color: white;
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.4rem;
+        }
+
+        .sidebar .logo .subtitle {
+            color: #a0aec0;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        .sidebar .nav-link {
+            color: #cbd5e0;
+            padding: 14px 20px;
+            margin: 3px 15px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            border: none;
+        }
+
+        .sidebar .nav-link:hover {
+            background: var(--sidebar-hover);
+            color: white;
+            transform: translateX(-5px);
+        }
+
+        .sidebar .nav-link.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.4);
+        }
+
+        .sidebar .nav-link i {
+            width: 20px;
+            margin-left: 12px;
+            font-size: 16px;
+        }
+
+        .sidebar .nav-section {
+            padding: 20px 25px 10px;
+            color: #718096;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* الشريط العلوي */
+        .navbar {
+            background: white !important;
+            box-shadow: 0 2px 25px rgba(0, 0, 0, 0.08);
+            margin-right: 280px;
+            padding: 15px 35px;
+            border-bottom: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .navbar .search-box {
+            position: relative;
+            max-width: 450px;
+            flex-grow: 1;
+        }
+
+        .navbar .search-box input {
+            border-radius: 25px;
+            padding: 12px 50px 12px 25px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .navbar .search-box input:focus {
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+            border-color: var(--primary);
+        }
+
+        .navbar .search-box i {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        .navbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .navbar .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+        }
+
+        .navbar .notifications {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .navbar .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--warning);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* المحتوى الرئيسي */
+        .main-content {
+            margin-right: 280px;
+            padding: 30px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* بطاقات الإحصائيات */
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+            border: none;
+            transition: all 0.3s ease;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .stat-card.success::before {
+            background: linear-gradient(135deg, var(--success), #4361ee);
+        }
+
+        .stat-card.warning::before {
+            background: linear-gradient(135deg, var(--warning), #f72585);
+        }
+
+        .stat-card.info::before {
+            background: linear-gradient(135deg, var(--info), #3a0ca3);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 35px rgba(0, 0, 0, 0.12);
+        }
+
+        .stat-card .icon {
+            width: 65px;
+            height: 65px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin-bottom: 20px;
+            background: rgba(67, 97, 238, 0.1);
+        }
+
+        .stat-card.primary .icon {
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary);
+        }
+
+        .stat-card.success .icon {
+            background: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+        }
+
+        .stat-card.warning .icon {
+            background: rgba(247, 37, 133, 0.1);
+            color: var(--warning);
+        }
+
+        .stat-card.info .icon {
+            background: rgba(72, 149, 239, 0.1);
+            color: var(--info);
+        }
+
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 10px 0;
+            color: #1e293b;
+            line-height: 1;
+        }
+
+        .stat-card .label {
+            color: #64748b;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .stat-card .trend {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .stat-card .trend.up {
+            color: #10b981;
+        }
+
+        .stat-card .trend.down {
+            color: #ef4444;
+        }
+
+        /* الجداول */
+        .table-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+            border: none;
+            overflow: hidden;
+        }
+
+        .table-card .card-header {
+            background: white;
+            border: none;
+            padding: 25px 30px 0;
+            font-weight: 700;
+            font-size: 18px;
+            color: #1e293b;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .table {
+            border-spacing: 0 10px;
+            border-collapse: separate;
+            margin: 0;
+        }
+
+        .table thead th {
+            border: none;
+            background: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            padding: 18px 20px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .table tbody tr {
+            background: white;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .table tbody tr:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .table tbody td {
+            border: none;
+            padding: 18px 20px;
+            vertical-align: middle;
+            background: white;
+            font-weight: 500;
+        }
+
+        .table tbody tr:first-child td:first-child {
+            border-top-right-radius: 12px;
+        }
+
+        .table tbody tr:first-child td:last-child {
+            border-top-left-radius: 12px;
+        }
+
+        .table tbody tr:last-child td:first-child {
+            border-bottom-right-radius: 12px;
+        }
+
+        .table tbody tr:last-child td:last-child {
+            border-bottom-left-radius: 12px;
+        }
+
+        /* الأزرار */
+        .btn {
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #4361ee);
+            box-shadow: 0 4px 15px rgba(76, 201, 240, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning), #f72585);
+            box-shadow: 0 4px 15px rgba(247, 37, 133, 0.3);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 13px;
+            border-radius: 10px;
+        }
+
+        /* التنبيهات */
+        .alert {
+            border: none;
+            border-radius: 14px;
+            border-right: 4px solid;
+            padding: 18px 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .alert-success {
+            background: rgba(76, 201, 240, 0.1);
+            border-right-color: var(--success);
+            color: #0d9488;
+        }
+
+        .alert-warning {
+            background: rgba(247, 37, 133, 0.1);
+            border-right-color: var(--warning);
+            color: #dc2626;
+        }
+
+        /* الشارات */
+        .badge {
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .badge-success {
+            background: rgba(76, 201, 240, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(76, 201, 240, 0.3);
+        }
+
+        .badge-warning {
+            background: rgba(247, 37, 133, 0.15);
+            color: var(--warning);
+            border: 1px solid rgba(247, 37, 133, 0.3);
+        }
+
+        .badge-primary {
+            background: rgba(67, 97, 238, 0.15);
+            color: var(--primary);
+            border: 1px solid rgba(67, 97, 238, 0.3);
+        }
+
+        .badge-secondary {
+            background: rgba(100, 116, 139, 0.15);
+            color: #64748b;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        /* القوائم */
+        .list-group-item {
+            border: none;
+            padding: 18px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+
+        .list-group-item:hover {
+            background: #f8fafc;
+        }
+
+        .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+        /* التقدم */
+        .progress {
+            height: 10px;
+            border-radius: 10px;
+            background: #e2e8f0;
+        }
+
+        .progress-bar {
+            border-radius: 10px;
+        }
+
+        /* الترقيم */
+        .pagination .page-link {
+            border: none;
+            border-radius: 10px;
+            margin: 0 3px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .pagination .page-item.active .page-link {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        /* الرسومات البيانية */
+        .chart-container {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        /* الفلترة */
+        .filter-section {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .navbar, .main-content {
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- الشريط الجانبي -->
+<nav class="sidebar">
+    <div class="logo">
+        <h4><i class="fas fa-warehouse me-2"></i>نظام المخزون</h4>
+        <div class="subtitle">System Inventory v2.0</div>
+    </div>
+
+    <div class="sidebar-content pt-3">
+        <div class="nav-section">الرئيسية</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                   href="{% url 'inventory:dashboard' %}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    لوحة التحكم
+                </a>
+            </li>
+        </ul>
+
+        <div class="nav-section">إدارة المحتوى</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-tags"></i>
+                    التصنيفات
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'product' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'inventory:product_list' %}">
+                    <i class="fas fa-boxes"></i>
+                    المنتجات
+                </a>
+            </li>
+        </ul>
+
+        <div class="nav-section">المخازن والمستودعات</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if 'warehouse' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'inventory:warehouse_list' %}">
+                    <i class="fas fa-warehouse"></i>
+                    المخازن
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'movement' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'inventory:stock_movements' %}">
+                    <i class="fas fa-exchange-alt"></i>
+                    إدارة المخزون
+                </a>
+            </li>
+        </ul>
+
+        <div class="nav-section">النظام</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-barcode"></i>
+                    نظام الباركود
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-shopping-cart"></i>
+                    المشتريات والموردين
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-chart-line"></i>
+                    المبيعات والعملاء
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'alert' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'inventory:stock_alerts' %}">
+                    <i class="fas fa-bell"></i>
+                    التنبيهات
+                    {% if active_alerts_count %}
+                        <span class="badge bg-warning ms-2">{{ active_alerts_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<!-- المحتوى الرئيسي -->
+<div class="main-content">
+    <!-- شريط التنقل العلوي -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <button class="navbar-toggler d-md-none" type="button">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="search-box">
+                <input type="text" class="form-control" placeholder="ابحث هنا...">
+                <i class="fas fa-search"></i>
+            </div>
+
+            <div class="user-info">
+                <div class="notifications">
+                    <i class="fas fa-bell text-muted fs-5"></i>
+                    <span class="notification-badge">3</span>
+                </div>
+                <div class="user-avatar">
+                    {{ user.get_full_name|default:user.username|first }}
+                </div>
+                <div class="user-details">
+                    <div class="user-name fw-bold">{{ user.get_full_name|default:user.username }}</div>
+                    <div class="user-role text-muted">مدير النظام</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- الرسائل -->
+    {% if messages %}
+        <div class="messages mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- المحتوى -->
+    {% block content %}
+    {% endblock %}
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+{% block scripts %}
+{% endblock %}
+</body>
+</html>

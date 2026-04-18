@@ -1,0 +1,510 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}لوحة تحكم المخزون - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-left: 4px solid;
+        }
+
+        .stat-card.primary {
+            border-left-color: var(--accent-color);
+        }
+
+        .stat-card.success {
+            border-left-color: var(--success-color);
+        }
+
+        .stat-card.warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .stat-card.danger {
+            border-left-color: var(--danger-color);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .alert-card {
+            border-right: 4px solid;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            background: white;
+        }
+
+        .alert-card.low {
+            border-right-color: var(--danger-color);
+            background: #f8d7da;
+        }
+
+        .alert-card.normal {
+            border-right-color: var(--success-color);
+            background: #d1ecf1;
+        }
+
+        .alert-card.high {
+            border-right-color: var(--warning-color);
+            background: #fff3cd;
+        }
+
+        .movement-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid #e3e6f0;
+        }
+
+        .movement-item:last-child {
+            border-bottom: none;
+        }
+
+        .movement-type {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 1rem;
+        }
+
+        .movement-in {
+            background-color: var(--success-color);
+        }
+
+        .movement-out {
+            background-color: var(--danger-color);
+        }
+
+        .movement-adjustment {
+            background-color: var(--warning-color);
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">لوحة تحكم المخزون</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'products:stock_adjustment' %}" class="btn btn-outline-warning">
+                    <i class="bi bi-sliders"></i>
+                    تسوية المخزون
+                </a>
+                <a href="{% url 'products:stock_transfer' %}" class="btn btn-outline-info">
+                    <i class="bi bi-arrow-left-right"></i>
+                    تحويل المخزون
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="mb-3"><i class="fas fa-chart-line me-2"></i>نظرة عامة على النظام</h4>
+    <!-- إحصائيات النظام الشاملة -->
+    <div class="stats-grid mb-4">
+        <div class="stat-card primary">
+            <div class="stat-number text-primary">{{ total_products }}</div>
+            <div class="stat-label">إجمالي المنتجات</div>
+            <i class="fas fa-box text-primary opacity-25 mt-2" style="font-size: 1.5rem;"></i>
+        </div>
+
+        <div class="stat-card success">
+            <div class="stat-number text-success">{{ total_sales|floatformat:0 }}</div>
+            <div class="stat-label">إجمالي المبيعات (ر.س)</div>
+            <i class="fas fa-cash-register text-success opacity-25 mt-2" style="font-size: 1.5rem;"></i>
+        </div>
+
+        <div class="stat-card danger">
+            <div class="stat-number text-danger">{{ total_purchases|floatformat:0 }}</div>
+            <div class="stat-label">إجمالي المشتريات (ر.س)</div>
+            <i class="fas fa-shopping-cart text-danger opacity-25 mt-2" style="font-size: 1.5rem;"></i>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-number text-warning">{{ total_warehouses }}</div>
+            <div class="stat-label">المستودعات</div>
+            <i class="fas fa-warehouse text-warning opacity-25 mt-2" style="font-size: 1.5rem;"></i>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card info" style="border-left-color: #17a2b8;">
+            <div class="stat-number" style="color: #17a2b8;">{{ total_customers }}</div>
+            <div class="stat-label">إجمالي العملاء</div>
+            <i class="fas fa-users text-info opacity-25 mt-2" style="font-size: 1.5rem;"></i>
+        </div>
+
+        <div class="stat-card secondary" style="border-left-color: #6c757d;">
+            <div class="stat-number text-secondary">{{ total_suppliers }}</div>
+            <div class="stat-label">إجمالي الموردين</div>
+            <i class="fas fa-truck text-secondary opacity-25 mt-2" style="font-size: 1.5rem;"></i>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-number text-warning">{{ low_stock_alerts }}</div>
+            <div class="stat-label">تنبيهات المخزون</div>
+            <i class="fas fa-exclamation-triangle text-warning opacity-25 mt-2" style="font-size: 1.5rem;"></i>
+        </div>
+
+        <div class="stat-card info" style="border-left-color: #20c997;">
+            <div class="stat-number" style="color: #20c997;">{{ total_categories }}</div>
+            <div class="stat-label">التصنيفات</div>
+            <i class="fas fa-tags opacity-25 mt-2" style="font-size: 1.5rem; color: #20c997;"></i>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- المنتجات منخفضة المخزون -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">المنتجات منخفضة المخزون</h5>
+                    <a href="{% url 'products:stock_alerts' %}" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+                </div>
+                <div class="card-body">
+                    {% if low_stock_products %}
+                        {% for item in low_stock_products %}
+                            <div class="alert-card low">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">{{ item.product.name }}</h6>
+                                        <p class="mb-1 text-muted small">{{ item.product.sku }}</p>
+                                        <p class="mb-0">
+                                            المخزون الحالي: <strong
+                                                class="text-danger">{{ item.current_stock }}</strong> |
+                                            الحد الأدنى: <strong>{{ item.min_stock }}</strong>
+                                        </p>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-danger">منخفض</span>
+                                        <div class="mt-1">
+                                            <a href="{% url 'products:product_detail' item.product.id %}"
+                                               class="btn btn-sm btn-outline-primary">عرض</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">لا توجد منتجات منخفضة المخزون</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- حركات المخزون الحديثة -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">آخر حركات المخزون</h5>
+                    <a href="{% url 'products:stock_movements' %}" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_movements %}
+                        {% for movement in recent_movements %}
+                            <div class="movement-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="movement-type
+                                {% if movement.movement_type == 'purchase' or movement.movement_type == 'transfer_in' %}movement-in
+                                {% elif movement.movement_type == 'sale' or movement.movement_type == 'transfer_out' %}movement-out
+                                {% else %}movement-adjustment{% endif %}">
+                                    </div>
+                                    <div class="ms-3">
+                                        <h6 class="mb-1">{{ movement.product.name }}</h6>
+                                        <p class="text-muted small mb-0">
+                                            {{ movement.get_movement_type_display }} - {{ movement.warehouse.name }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                            <span class="{% if movement.quantity > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                {% if movement.quantity > 0 %}+{% endif %}{{ movement.quantity }}
+                            </span>
+                                    <p class="text-muted small mb-0">
+                                        {{ movement.created_at|timesince }}
+                                    </p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-arrow-left-right text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">لا توجد حركات حديثة</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- إحصائيات وتقارير -->
+        <div class="col-lg-6">
+            <!-- إجراءات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">إجراءات سريعة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'products:product_create' %}"
+                               class="btn btn-outline-primary btn-lg w-100 h-100 py-3">
+                                <i class="bi bi-plus-circle fs-1 d-block mb-2"></i>
+                                إضافة منتج
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'products:stock_adjustment' %}"
+                               class="btn btn-outline-warning btn-lg w-100 h-100 py-3">
+                                <i class="bi bi-sliders fs-1 d-block mb-2"></i>
+                                تسوية المخزون
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'products:stock_transfer' %}"
+                               class="btn btn-outline-info btn-lg w-100 h-100 py-3">
+                                <i class="bi bi-arrow-left-right fs-1 d-block mb-2"></i>
+                                تحويل المخزون
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{% url 'products:barcode_generator' %}"
+                               class="btn btn-outline-success btn-lg w-100 h-100 py-3">
+                                <i class="bi bi-upc-scan fs-1 d-block mb-2"></i>
+                                توليد باركود
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- حالة المخازن -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">حالة المخازن</h5>
+                </div>
+                <div class="card-body">
+                    {% for warehouse in warehouses %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold">{{ warehouse.name }}</span>
+                                <span class="text-muted small">
+                            {{ warehouse.get_used_capacity|floatformat:0 }} / {{ warehouse.capacity }}
+                        </span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar
+                            {% if warehouse.get_usage_percentage < 50 %}bg-success
+                            {% elif warehouse.get_usage_percentage < 80 %}bg-warning
+                            {% else %}bg-danger{% endif %}"
+                                     style="width: {{ warehouse.get_usage_percentage }}%">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1">
+                                <small class="text-muted">{{ warehouse.get_products_count }} منتج</small>
+                                <small class="text-muted">{{ warehouse.get_usage_percentage|floatformat:1 }}%</small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- تقارير سريعة -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">تقارير سريعة</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a href="{% url 'products:product_list' %}?stock_status=low"
+                           class="list-group-item list-group-item-action">
+                            <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                            المنتجات منخفضة المخزون
+                        </a>
+                        <a href="{% url 'products:product_list' %}?stock_status=out"
+                           class="list-group-item list-group-item-action">
+                            <i class="bi bi-x-circle text-danger me-2"></i>
+                            المنتجات المنتهية
+                        </a>
+                        <a href="{% url 'products:stock_movements' %}?type=purchase"
+                           class="list-group-item list-group-item-action">
+                            <i class="bi bi-cart-plus text-success me-2"></i>
+                            حركات الشراء
+                        </a>
+                        <a href="{% url 'products:stock_movements' %}?type=sale"
+                           class="list-group-item list-group-item-action">
+                            <i class="bi bi-cart-dash text-danger me-2"></i>
+                            حركات البيع
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مخططات إحصائية -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">إحصائيات المخزون</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="chart-container">
+                                <h6>توزيع المنتجات حسب الحالة</h6>
+                                <canvas id="stockStatusChart" width="200" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="chart-container">
+                                <h6>الحركات الشهرية</h6>
+                                <canvas id="monthlyMovementsChart" width="200" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="chart-container">
+                                <h6>المخازن حسب الاستخدام</h6>
+                                <canvas id="warehouseUsageChart" width="200" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // مخطط حالة المخزون
+            const stockStatusCtx = document.getElementById('stockStatusChart').getContext('2d');
+            const stockStatusChart = new Chart(stockStatusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['منخفض', 'طبيعي', 'مرتفع'],
+                    datasets: [{
+                        data: [{{ low_stock_products|length }}, 15, 5], // بيانات افتراضية
+                        backgroundColor: [
+                            '#e74c3c',
+                            '#27ae60',
+                            '#f39c12'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true
+                        }
+                    }
+                }
+            });
+
+            // مخطط الحركات الشهرية
+            const monthlyMovementsCtx = document.getElementById('monthlyMovementsChart').getContext('2d');
+            const monthlyMovementsChart = new Chart(monthlyMovementsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو'],
+                    datasets: [{
+                        label: 'حركات الدخول',
+                        data: [12, 19, 8, 15, 12, 17],
+                        backgroundColor: '#27ae60',
+                        borderWidth: 0
+                    }, {
+                        label: 'حركات الخروج',
+                        data: [8, 12, 6, 10, 9, 14],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true
+                        }
+                    }
+                }
+            });
+
+            // مخطط استخدام المخازن
+            const warehouseUsageCtx = document.getElementById('warehouseUsageChart').getContext('2d');
+            const warehouseUsageChart = new Chart(warehouseUsageCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['المخزن الرئيسي', 'فرع جدة', 'فرع الدمام'],
+                    datasets: [{
+                        data: [45, 30, 25],
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#9b59b6'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+{% endblock %}

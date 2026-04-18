@@ -1,0 +1,513 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}جرد المخزون - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .count-card {
+            border-left: 4px solid #007bff;
+            background: #fff;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .count-draft {
+            border-left-color: #6c757d;
+        }
+
+        .count-in-progress {
+            border-left-color: #17a2b8;
+        }
+
+        .count-completed {
+            border-left-color: #28a745;
+        }
+
+        .count-cancelled {
+            border-left-color: #dc3545;
+        }
+
+        .count-adjusted {
+            border-left-color: #6f42c1;
+        }
+
+        .progress-container {
+            background: #f8f9fa;
+            border-radius: 1rem;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .progress-bar-custom {
+            height: 20px;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: #e9ecef;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.3s ease;
+        }
+
+        .variance-positive {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .variance-negative {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .barcode-scanner {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">جرد المخزون</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:count_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>
+                جرد جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-primary text-white">
+                <div class="card-body">
+                    <div class="number">{{ total_counts }}</div>
+                    <div class="label">إجمالي عمليات الجرد</div>
+                    <i class="bi bi-clipboard-check fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-info text-white">
+                <div class="card-body">
+                    <div class="number">{{ in_progress_counts }}</div>
+                    <div class="label">جاري الجرد</div>
+                    <i class="bi bi-clock fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-success text-white">
+                <div class="card-body">
+                    <div class="number">{{ completed_counts }}</div>
+                    <div class="label">مكتملة</div>
+                    <i class="bi bi-check-circle fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-warning text-white">
+                <div class="card-body">
+                    <div class="number">{{ total_variance_count }}</div>
+                    <div class="label">إجمالي الفروقات</div>
+                    <i class="bi bi-exclamation-triangle fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-danger text-white">
+                <div class="card-body">
+                    <div class="number">{{ total_variance_value|floatformat:0 }}</div>
+                    <div class="label">قيمة الفروقات</div>
+                    <i class="bi bi-currency-dollar fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card stat-card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="number">{{ accuracy_rate|floatformat:1 }}%</div>
+                    <div class="label">معدل الدقة</div>
+                    <i class="bi bi-graph-up fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">عمليات الجرد</h5>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" id="statusFilter" style="width: 150px;">
+                            <option value="">جميع الحالات</option>
+                            <option value="draft">مسودة</option>
+                            <option value="in_progress">جاري الجرد</option>
+                            <option value="completed">مكتملة</option>
+                            <option value="cancelled">ملغاة</option>
+                        </select>
+                        <input type="month" class="form-control form-control-sm" id="monthFilter">
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if inventory_counts %}
+                        {% for count in inventory_counts %}
+                            <div class="count-card count-{{ count.status }}" data-status="{{ count.status }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <div class="d-flex justify-content-between align-items-start mb-3">
+                                            <div>
+                                                <h6 class="mb-1">{{ count.count_name }}</h6>
+                                                <p class="text-muted small mb-2">
+                                                    <i class="bi bi-building"></i>
+                                                    {{ count.warehouse.name }}
+                                                    {% if count.category %}
+                                                        | <i class="bi bi-tags"></i> {{ count.category.name }}
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                            <span class="badge
+                                        {% if count.status == 'draft' %}bg-secondary
+                                        {% elif count.status == 'in_progress' %}bg-info
+                                        {% elif count.status == 'completed' %}bg-success
+                                        {% elif count.status == 'cancelled' %}bg-danger
+                                        {% else %}bg-primary{% endif %}">
+                                        {{ count.get_status_display }}
+                                    </span>
+                                        </div>
+
+                                        <!-- شريط التقدم -->
+                                        <div class="progress-container">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="small text-muted">تقدم الجرد</span>
+                                                <span class="small text-muted">{{ count.progress_percentage|floatformat:1 }}%</span>
+                                            </div>
+                                            <div class="progress-bar-custom">
+                                                <div class="progress-fill"
+                                                     style="width: {{ count.progress_percentage }}%"></div>
+                                            </div>
+                                            <div class="d-flex justify-content-between mt-2">
+                                                <small class="text-muted">{{ count.counted_items }}
+                                                    من {{ count.total_items }} عنصر</small>
+                                                <small class="text-muted">{{ count.variance_count }} فروقات</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="row text-center">
+                                            <div class="col-3">
+                                                <small class="text-muted d-block">التاريخ المخطط</small>
+                                                <strong>{{ count.planned_date|date:"Y/m/d" }}</strong>
+                                            </div>
+                                            <div class="col-3">
+                                                <small class="text-muted d-block">تاريخ البدء</small>
+                                                <strong>{{ count.start_date|date:"Y/m/d"|default:"-" }}</strong>
+                                            </div>
+                                            <div class="col-3">
+                                                <small class="text-muted d-block">تاريخ الانتهاء</small>
+                                                <strong>{{ count.end_date|date:"Y/m/d"|default:"-" }}</strong>
+                                            </div>
+                                            <div class="col-3">
+                                                <small class="text-muted d-block">قيمة الفروقات</small>
+                                                <strong class="{% if count.total_variance_value > 0 %}variance-positive{% else %}variance-negative{% endif %}">
+                                                    {{ count.total_variance_value|floatformat:2 }}
+                                                </strong>
+                                            </div>
+                                        </div>
+
+                                        {% if count.notes %}
+                                            <div class="mt-2 p-2 bg-light rounded">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-chat-left-text"></i>
+                                                    {{ count.notes }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4 text-end">
+                                        <div class="btn-group-vertical">
+                                            {% if count.status == 'draft' %}
+                                                <a href="{% url 'inventory:continue_count' count.id %}"
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="bi bi-play-circle"></i> بدء الجرد
+                                                </a>
+                                            {% elif count.status == 'in_progress' %}
+                                                <a href="{% url 'inventory:continue_count' count.id %}"
+                                                   class="btn btn-sm btn-warning">
+                                                    <i class="bi bi-arrow-repeat"></i> متابعة الجرد
+                                                </a>
+                                            {% endif %}
+
+                                            {% if count.status == 'completed' %}
+                                                <a href="{% url 'inventory:count_results' count.id %}"
+                                                   class="btn btn-sm btn-success">
+                                                    <i class="bi bi-graph-up"></i> النتائج
+                                                </a>
+                                            {% endif %}
+
+                                            <button class="btn btn-sm btn-outline-info view-count"
+                                                    data-count-id="{{ count.id }}">
+                                                <i class="bi bi-eye"></i> تفاصيل
+                                            </button>
+
+                                            {% if count.status == 'draft' or count.status == 'in_progress' %}
+                                                <button class="btn btn-sm btn-outline-danger cancel-count"
+                                                        data-count-id="{{ count.id }}">
+                                                    <i class="bi bi-x-lg"></i> إلغاء
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-clipboard-check text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="text-muted mt-3">لا توجد عمليات جرد</h5>
+                            <p class="text-muted">ابدأ بإنشاء عملية جرد جديدة للمخازن</p>
+                            <a href="{% url 'inventory:count_create' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i>
+                                جرد جديد
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    <!-- الترقيم -->
+                    {% if inventory_counts.has_other_pages %}
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if inventory_counts.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ inventory_counts.previous_page_number }}">السابق</a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in inventory_counts.paginator.page_range %}
+                                    {% if inventory_counts.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if inventory_counts.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link"
+                                           href="?page={{ inventory_counts.next_page_number }}">التالي</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- إحصائيات الجرد -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات الجرد</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="countsChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- عمليات الجرد القادمة -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">عمليات الجرد القادمة</h6>
+                </div>
+                <div class="card-body">
+                    {% for count in upcoming_counts %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <div>
+                                <strong class="small">{{ count.count_name }}</strong>
+                                <div class="text-muted">{{ count.warehouse.name }}</div>
+                            </div>
+                            <span class="badge bg-warning">{{ count.planned_date|date:"d/m" }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted text-center small">لا توجد عمليات جرد قادمة</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'inventory:count_create' %}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i>
+                            جرد جديد
+                        </a>
+                        <a href="#" class="btn btn-outline-info" data-bs-toggle="modal"
+                           data-bs-target="#quickCountModal">
+                            <i class="bi bi-lightning"></i>
+                            جرد سريع
+                        </a>
+                        <a href="{% url 'inventory:stock_movements' %}" class="btn btn-outline-warning">
+                            <i class="bi bi-arrow-left-right"></i>
+                            حركات المخزون
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال الجرد السريع -->
+    <div class="modal fade" id="quickCountModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">جرد سريع</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="barcode-scanner">
+                        <i class="bi bi-upc-scan text-muted" style="font-size: 3rem;"></i>
+                        <h6 class="mt-3">مسح الباركود</h6>
+                        <p class="text-muted small">قم بمسح باركود المنتج للبدء في الجرد السريع</p>
+                        <button class="btn btn-outline-primary mt-2">
+                            <i class="bi bi-camera"></i>
+                            تشغيل الكاميرا
+                        </button>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label">أو إدخال الباركود يدوياً</label>
+                        <input type="text" class="form-control" placeholder="أدخل رقم الباركود...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary">بدء الجرد</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // رسم بياني لعمليات الجرد
+            const ctx = document.getElementById('countsChart').getContext('2d');
+            const countsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['مسودة', 'جاري الجرد', 'مكتملة', 'ملغاة'],
+                    datasets: [{
+                        label: 'عدد عمليات الجرد',
+                        data: [
+                            {{ draft_counts }},
+                            {{ in_progress_counts }},
+                            {{ completed_counts }},
+                            {{ cancelled_counts }}
+                        ],
+                        backgroundColor: [
+                            '#6c757d',
+                            '#17a2b8',
+                            '#28a745',
+                            '#dc3545'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+
+            // فلترة عمليات الجرد
+            document.getElementById('statusFilter').addEventListener('change', filterCounts);
+            document.getElementById('monthFilter').addEventListener('change', filterCounts);
+
+            function filterCounts() {
+                const statusFilter = document.getElementById('statusFilter').value;
+                const monthFilter = document.getElementById('monthFilter').value;
+
+                const countCards = document.querySelectorAll('.count-card');
+
+                countCards.forEach(card => {
+                    const status = card.dataset.status;
+                    const plannedDate = card.querySelector('.row.text-center .col-3:first-child strong').textContent;
+
+                    let show = true;
+
+                    if (statusFilter && status !== statusFilter) {
+                        show = false;
+                    }
+
+                    if (monthFilter) {
+                        const cardDate = new Date(plannedDate);
+                        const filterDate = new Date(monthFilter);
+                        if (cardDate.getMonth() !== filterDate.getMonth() || cardDate.getFullYear() !== filterDate.getFullYear()) {
+                            show = false;
+                        }
+                    }
+
+                    card.style.display = show ? 'block' : 'none';
+                });
+            }
+
+            // إدارة عمليات الجرد
+            document.querySelectorAll('.cancel-count').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const countId = this.dataset.countId;
+                    if (confirm('هل تريد إلغاء عملية الجرد هذه؟')) {
+                        // محاكاة إلغاء الجرد
+                        this.closest('.count-card').querySelector('.badge').className = 'badge bg-danger';
+                        this.closest('.count-card').querySelector('.badge').textContent = 'ملغية';
+                        this.remove();
+                        alert('تم إلغاء عملية الجرد بنجاح');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.view-count').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const countId = this.dataset.countId;
+                    alert(`عرض تفاصيل الجرد #${countId}`);
+                    // في التطبيق الحقيقي: توجيه إلى صفحة التفاصيل
+                });
+            });
+        });
+    </script>
+{% endblock %}

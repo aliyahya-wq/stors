@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة الصلاحيات - نظام الإدارة{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="fas fa-key me-2"></i>إدارة الصلاحيات - {{ role.get_name_display }}
+            </h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <a href="{% url 'accounts:role_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-right me-2"></i>العودة للقائمة
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <form method="post" id="permissionsForm">
+                            {% csrf_token %}
+
+                            <!-- Modules Tabs -->
+                            <ul class="nav nav-tabs mb-4" id="modulesTab" role="tablist">
+                                {% for module, permissions in permissions_by_module.items %}
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link {% if forloop.first %}active{% endif %}"
+                                                id="{{ module }}-tab" data-bs-toggle="tab"
+                                                data-bs-target="#{{ module }}" type="button">
+                                            {{ module }}
+                                        </button>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+
+                            <!-- Permissions Content -->
+                            <div class="tab-content" id="modulesTabContent">
+                                {% for module, permissions in permissions_by_module.items %}
+                                    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+                                         id="{{ module }}">
+                                        <div class="row">
+                                            {% for permission in permissions %}
+                                                <div class="col-md-6 col-lg-4 mb-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input permission-checkbox"
+                                                               type="checkbox"
+                                                               name="permissions"
+                                                               value="{{ permission.id }}"
+                                                               id="permission_{{ permission.id }}"
+                                                               {% if permission in role.permissions.all %}checked{% endif %}>
+                                                        <label class="form-check-label"
+                                                               for="permission_{{ permission.id }}">
+                                                            <strong>{{ permission.name }}</strong>
+                                                            <br>
+                                                            <small class="text-muted">{{ permission.description }}</small>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Select All / None -->
+                            <div class="card bg-light mt-4">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>تحديد الكل / إلغاء الكل</span>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="selectAll">
+                                                تحديد الكل
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                    id="selectNone">
+                                                إلغاء الكل
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save me-2"></i>حفظ الصلاحيات
+                                </button>
+                                <a href="{% url 'accounts:role_list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>إلغاء
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Select All functionality
+            document.getElementById('selectAll').addEventListener('click', function () {
+                document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+            });
+
+            // Select None functionality
+            document.getElementById('selectNone').addEventListener('click', function () {
+                document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            });
+
+            // Module-specific select all
+            document.querySelectorAll('.nav-link').forEach(tab => {
+                tab.addEventListener('click', function () {
+                    const moduleId = this.getAttribute('data-bs-target').substring(1);
+                    // You can add module-specific select all functionality here
+                });
+            });
+        });
+    </script>
+
+    <style>
+        .nav-tabs .nav-link {
+            color: #495057;
+            border: 1px solid transparent;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #3498db;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+
+        .form-check-input:checked {
+            background-color: #27ae60;
+            border-color: #27ae60;
+        }
+
+        .permission-checkbox {
+            transform: scale(1.2);
+            margin-left: 5px;
+        }
+    </style>
+{% endblock %}

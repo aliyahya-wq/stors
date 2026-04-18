@@ -1,0 +1,80 @@
+<li class="category-item {% if not category.is_active %}inactive{% endif %}">
+    <div class="category-header">
+        <div class="category-info">
+            <div class="d-flex align-items-center">
+                {% if category.image %}
+                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                {% endif %}
+                <div class="flex-grow-1">
+                    <h6 class="category-name mb-1">
+                        {{ category.name }}
+                        {% if not category.is_active %}
+                            <span class="badge bg-secondary category-badge">غير نشط</span>
+                        {% endif %}
+                        <span class="badge {% if category.category_type == 'electronics' %}bg-primary
+                            {% elif category.category_type == 'food' %}bg-success
+                            {% elif category.category_type == 'clothing' %}bg-info
+                            {% elif category.category_type == 'home' %}bg-warning
+                            {% else %}bg-secondary{% endif %} category-badge">
+                            {{ category.get_category_type_display }}
+                        </span>
+                    </h6>
+                    {% if category.description %}
+                        <p class="text-muted small mb-1">{{ category.description|truncatewords:10 }}</p>
+                    {% endif %}
+                    <div class="d-flex align-items-center">
+                        <span class="products-count">
+                            <i class="bi bi-box"></i>
+                            {{ category.products.count }} منتج
+                        </span>
+                        {% if category.parent %}
+                            <small class="text-muted ms-2">
+                                <i class="bi bi-arrow-return-left"></i>
+                                تابع لـ: {{ category.parent.name }}
+                            </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="category-actions">
+            {% if category.get_children.exists %}
+                <button class="subcategories-toggle"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#subcategories-{{ category.id }}"
+                        aria-expanded="true">
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            {% else %}
+                <span class="text-muted" style="width: 24px;"></span>
+            {% endif %}
+
+            <a href="{% url 'products:category_detail' category.id %}"
+               class="btn btn-outline-info btn-sm"
+               title="عرض التفاصيل">
+                <i class="bi bi-eye"></i>
+            </a>
+            <a href="{% url 'products:category_update' category.id %}"
+               class="btn btn-outline-warning btn-sm"
+               title="تعديل">
+                <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{% url 'products:product_create' %}?category={{ category.id }}"
+               class="btn btn-outline-success btn-sm"
+               title="إضافة منتج">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+        </div>
+    </div>
+
+    {% if category.get_children.exists %}
+        <div class="collapse show" id="subcategories-{{ category.id }}">
+            <ul class="category-tree mt-2">
+                {% for child in category.get_children.all %}
+                    {% include 'products/categories/category_item.html' with category=child %}
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</li>

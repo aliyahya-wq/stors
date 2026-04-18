@@ -1,0 +1,368 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ inventory_item.product.name }} - {{ inventory_item.warehouse.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin: 1.5rem 0;
+    }
+    
+    .stat-card {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+    
+    .detail-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .movement-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    
+    .movement-timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.75rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -1.75rem;
+        top: 0.25rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #007bff;
+        border: 2px solid white;
+    }
+    
+    .stock-chart {
+        height: 300px;
+        position: relative;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- رأس المنتج -->
+<div class="product-header">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center">
+                <div class="me-4">
+                    {% if inventory_item.product.main_image %}
+                    <img src="{{ inventory_item.product.main_image.url }}" alt="{{ inventory_item.product.name }}" 
+                         class="rounded" width="80" height="80" style="object-fit: cover;">
+                    {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                         style="width: 80px; height: 80px;">
+                        <i class="bi bi-image text-muted" style="font-size: 2rem;"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div>
+                    <h1 class="h2 mb-2">{{ inventory_item.product.name }}</h1>
+                    <p class="mb-3">
+                        <i class="bi bi-building"></i> {{ inventory_item.warehouse.name }}
+                        {% if inventory_item.storage_location %}
+                        | <i class="bi bi-geo-alt"></i> {{ inventory_item.storage_location.get_location_code }}
+                        {% endif %}
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-tag me-1"></i>
+                            {{ inventory_item.product.category.name }}
+                        </span>
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-code me-1"></i>
+                            {{ inventory_item.product.sku }}
+                        </span>
+                        <span class="badge {% if inventory_item.quantity > inventory_item.product.min_stock %}bg-success{% else %}bg-danger{% endif %}">
+                            <i class="bi bi-box me-1"></i>
+                            {{ inventory_item.quantity }} {{ inventory_item.product.unit.symbol }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div class="btn-group">
+                <a href="{% url 'inventory:movement_create' %}?product={{ inventory_item.product.id }}&warehouse={{ inventory_item.warehouse.id }}" 
+                   class="btn btn-light">
+                    <i class="bi bi-arrow-left-right"></i>
+                    حركة جديدة
+                </a>
+                <a href="{% url 'inventory:transfers_list' %}?from_warehouse={{ inventory_item.warehouse.id }}&product={{ inventory_item.product.id }}"
+                   class="btn btn-warning">
+                    <i class="bi bi-arrow-repeat"></i>
+                    تحويل
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">{{ inventory_item.quantity }}</div>
+            <div class="stat-label">الكمية الحالية</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ inventory_item.product.min_stock }}</div>
+            <div class="stat-label">الحد الأدنى</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ inventory_item.product.max_stock }}</div>
+            <div class="stat-label">الحد الأقصى</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ inventory_item.total_value|floatformat:2 }}</div>
+            <div class="stat-label">القيمة الإجمالية</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- المعلومات الأساسية -->
+    <div class="col-lg-4">
+        <div class="detail-card">
+            <h5 class="mb-4">معلومات المنتج</h5>
+            <table class="table table-sm">
+                <tr>
+                    <td><strong>اسم المنتج:</strong></td>
+                    <td>{{ inventory_item.product.name }}</td>
+                </tr>
+                <tr>
+                    <td><strong>SKU:</strong></td>
+                    <td>{{ inventory_item.product.sku }}</td>
+                </tr>
+                <tr>
+                    <td><strong>الباركود:</strong></td>
+                    <td>{{ inventory_item.product.barcode|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>التصنيف:</strong></td>
+                    <td>{{ inventory_item.product.category.name }}</td>
+                </tr>
+                <tr>
+                    <td><strong>وحدة القياس:</strong></td>
+                    <td>{{ inventory_item.product.unit.name }} ({{ inventory_item.product.unit.symbol }})</td>
+                </tr>
+                <tr>
+                    <td><strong>سعر الشراء:</strong></td>
+                    <td>{{ inventory_item.product.purchase_price|floatformat:2 }} ر.س</td>
+                </tr>
+                <tr>
+                    <td><strong>سعر البيع:</strong></td>
+                    <td>{{ inventory_item.product.selling_price|floatformat:2 }} ر.س</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="detail-card">
+            <h5 class="mb-4">معلومات المخزون</h5>
+            <table class="table table-sm">
+                <tr>
+                    <td><strong>المخزن:</strong></td>
+                    <td>{{ inventory_item.warehouse.name }}</td>
+                </tr>
+                <tr>
+                    <td><strong>موقع التخزين:</strong></td>
+                    <td>{{ inventory_item.storage_location.get_location_code|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>رقم الدفعة:</strong></td>
+                    <td>{{ inventory_item.batch_number|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>تاريخ انتهاء الصلاحية:</strong></td>
+                    <td>{{ inventory_item.expiry_date|date:"Y/m/d"|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>حالة المخزون:</strong></td>
+                    <td>
+                        {% if inventory_item.quantity <= 0 %}
+                        <span class="badge bg-dark">منتهي</span>
+                        {% elif inventory_item.quantity <= inventory_item.product.min_stock %}
+                        <span class="badge bg-danger">منخفض</span>
+                        {% elif inventory_item.quantity >= inventory_item.product.max_stock and inventory_item.product.max_stock > 0 %}
+                        <span class="badge bg-warning">مرتفع</span>
+                        {% else %}
+                        <span class="badge bg-success">طبيعي</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>آخر تحديث:</strong></td>
+                    <td>{{ inventory_item.updated_at|date:"Y/m/d H:i" }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- إجراءات سريعة -->
+        <div class="detail-card">
+            <h5 class="mb-4">إجراءات سريعة</h5>
+            <div class="d-grid gap-2">
+                <a href="{% url 'inventory:movement_create' %}?product={{ inventory_item.product.id }}&warehouse={{ inventory_item.warehouse.id }}" 
+                   class="btn btn-primary">
+                    <i class="bi bi-arrow-left-right"></i>
+                    حركة جديدة
+                </a>
+                <a href="{% url 'inventory:transfers_list' %}?from_warehouse={{ inventory_item.warehouse.id }}&product={{ inventory_item.product.id }}"
+                   class="btn btn-outline-warning">
+                    <i class="bi bi-arrow-repeat"></i>
+                    تحويل للمخزن
+                </a>
+                <a href="{% url 'products:product_detail' inventory_item.product.id %}" 
+                   class="btn btn-outline-info">
+                    <i class="bi bi-box"></i>
+                    تفاصيل المنتج
+                </a>
+                <a href="{% url 'inventory:warehouse_detail' inventory_item.warehouse.id %}" 
+                   class="btn btn-outline-secondary">
+                    <i class="bi bi-building"></i>
+                    تفاصيل المخزن
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- الرسوم البيانية والحركات -->
+    <div class="col-lg-8">
+        <!-- رسم بياني لتاريخ المخزون -->
+        <div class="detail-card">
+            <h5 class="mb-4">تطور المخزون</h5>
+            <div class="stock-chart">
+                <canvas id="stockHistoryChart"></canvas>
+            </div>
+        </div>
+
+        <!-- آخر الحركات -->
+        <div class="detail-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0">آخر حركات المخزون</h5>
+                <a href="{% url 'inventory:stock_movements' %}?product={{ inventory_item.product.id }}&warehouse={{ inventory_item.warehouse.id }}" 
+                   class="btn btn-sm btn-outline-secondary">
+                    عرض الكل
+                </a>
+            </div>
+            
+            {% if recent_movements %}
+            <div class="movement-timeline">
+                {% for movement in recent_movements %}
+                <div class="timeline-item">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="mb-1">{{ movement.get_movement_type_display }}</h6>
+                            <p class="text-muted small mb-2">{{ movement.notes|default:"لا توجد ملاحظات" }}</p>
+                        </div>
+                        <span class="badge 
+                            {% if movement.movement_type == 'purchase' %}bg-success
+                            {% elif movement.movement_type == 'sale' %}bg-danger
+                            {% elif movement.movement_type == 'transfer' %}bg-warning
+                            {% else %}bg-info{% endif %}">
+                            {% if movement.quantity > 0 %}+{% endif %}{{ movement.quantity }}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            {{ movement.created_by.get_full_name|default:movement.created_by.username }}
+                        </small>
+                        <small class="text-muted">{{ movement.created_at|date:"Y/m/d H:i" }}</small>
+                    </div>
+                    {% if movement.reference_number %}
+                    <small class="text-muted d-block mt-1">
+                        <i class="bi bi-tag"></i> {{ movement.reference_number }}
+                    </small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-arrow-left-right text-muted" style="font-size: 3rem;"></i>
+                <h6 class="text-muted mt-3">لا توجد حركات سابقة</h6>
+                <p class="text-muted small">لم يتم تسجيل أي حركات لهذا المنتج في هذا المخزن</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- معلومات إضافية -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="detail-card">
+                    <h6 class="mb-3">معلومات السلامة</h6>
+                    <div class="alert {% if inventory_item.quantity <= inventory_item.product.min_stock %}alert-danger{% else %}alert-success{% endif %}">
+                        <i class="bi bi-{% if inventory_item.quantity <= inventory_item.product.min_stock %}exclamation-triangle{% else %}check-circle{% endif %}"></i>
+                        {% if inventory_item.quantity <= inventory_item.product.min_stock %}
+                        المخزون أقل من الحد الأدنى
+                        {% else %}
+                        المخزون ضمن المستويات الآمنة
+                        {% endif %}
+                    </div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar 
+                            {% if inventory_item.quantity <= inventory_item.product.min_stock %}bg-danger
+                            {% elif inventory_item.quantity >= inventory_item.product.max_stock %}bg-warning
+                            {% else %}bg-success{% endif %}"
+                             style="width: {% widthratio inventory_item.quantity inventory_item.product.max_stock|default:inventory_item.quantity 100 %}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        {{ inventory_item.quantity }} / {{ inventory_item.product.max_stock|default:"لا يوجد حد" }}
+                    </small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="detail-card">
+                    <h6 class="mb-3">القيمة المالية</h6>
+                    <div class="text-center">
+                        <div class="h4 text-primary">{{ inventory_item.total_value|floatformat:2 }} ر.س</div>
+                        <small class="text-muted">القيمة الإجمالية للمخزون</small>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between small">
+                            <span>سعر الشراء:</span>
+                            <span>{{ inventory_item.product.purchase_price|floatformat:2 }} ر.س</span>
+                        </div>
+                        <div class="d-flex justify-content-between small">
+                            <span>سعر البيع:</span>
+                            <span>{{ inventory_item.product.selling_price|floatformat:2 }} ر.س</span>
+                        </div>
+                        <div class="d-flex justify-content-between small">
+                            <span>هامش الربح:</span>
+                            <span class="text-success">{{ inventory_item.product.profit_margin|floatformat:2 }} ر.س</span>
+                        </div>
+                    </div>

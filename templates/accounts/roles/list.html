@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}إدارة الأدوار - نظام الإدارة{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="fas fa-user-tag me-2"></i>إدارة الأدوار
+            </h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <a href="{% url 'accounts:role_create' %}" class="btn btn-success">
+                    <i class="fas fa-plus me-2"></i>إنشاء دور جديد
+                </a>
+            </div>
+        </div>
+
+        <!-- Roles Grid -->
+        <div class="row">
+            {% for role in roles %}
+                <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="card shadow border-0 h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title">
+                                    <span class="badge badge-{{ role.name }} me-2">{{ role.get_name_display }}</span>
+                                </h5>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'accounts:role_update' role.pk %}">
+                                                <i class="fas fa-edit me-2"></i>تعديل
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item"
+                                               href="{% url 'accounts:role_permissions' role.pk %}">
+                                                <i class="fas fa-key me-2"></i>إدارة الصلاحيات
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <p class="card-text text-muted">{{ role.description }}</p>
+
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">عدد المستخدمين:</span>
+                                    <span class="badge bg-primary">{{ role.user_count }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <span class="text-muted">عدد الصلاحيات:</span>
+                                    <span class="badge bg-success">{{ role.permissions.count }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12">
+                    <div class="card shadow">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-user-tag fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">لا توجد أدوار مضافة</p>
+                            <a href="{% url 'accounts:role_create' %}" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>إنشاء أول دور
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <style>
+        .badge-super_admin {
+            background-color: #e74c3c;
+        }
+
+        .badge-admin {
+            background-color: #3498db;
+        }
+
+        .badge-inventory_manager {
+            background-color: #f39c12;
+        }
+
+        .badge-purchase_manager {
+            background-color: #9b59b6;
+        }
+
+        .badge-sales_manager {
+            background-color: #27ae60;
+        }
+
+        .badge-viewer {
+            background-color: #95a5a6;
+        }
+
+        .card {
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+{% endblock %}

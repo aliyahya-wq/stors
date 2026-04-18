@@ -1,0 +1,393 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تنبيهات المخزون - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .alert-card {
+            border-right: 4px solid;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            background: white;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: all 0.3s ease;
+        }
+
+        .alert-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .alert-card.low-stock {
+            border-right-color: var(--danger-color);
+            background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+        }
+
+        .alert-card.expiry {
+            border-right-color: var(--warning-color);
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+        }
+
+        .alert-card.excess {
+            border-right-color: var(--info-color);
+            background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+        }
+
+        .alert-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-left: 1rem;
+        }
+
+        .alert-icon.low-stock {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .alert-icon.expiry {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .alert-icon.excess {
+            background: var(--info-color);
+            color: white;
+        }
+
+        .resolve-btn {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .alert-card:hover .resolve-btn {
+            opacity: 1;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">تنبيهات المخزون</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <button type="button" class="btn btn-outline-danger me-2" id="resolve-all-btn">
+                <i class="bi bi-check-all"></i>
+                حل جميع التنبيهات
+            </button>
+            <a href="{% url 'products:product_list' %}?stock_status=low" class="btn btn-outline-primary">
+                <i class="bi bi-box"></i>
+                عرض المنتجات منخفضة المخزون
+            </a>
+        </div>
+    </div>
+
+    <!-- إحصائيات التنبيهات -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-danger">{{ total_alerts }}</div>
+                    <div class="label">إجمالي التنبيهات</div>
+                    <i class="bi bi-exclamation-triangle fs-1 text-danger opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-warning">{{ low_stock_count }}</div>
+                    <div class="label">منخفضة المخزون</div>
+                    <i class="bi bi-arrow-down-circle fs-1 text-warning opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-info">{{ excess_count }}</div>
+                    <div class="label">مخزون زائد</div>
+                    <i class="bi bi-arrow-up-circle fs-1 text-info opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="number text-success">{{ resolved_count }}</div>
+                    <div class="label">تم حلها</div>
+                    <i class="bi bi-check-circle fs-1 text-success opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- قائمة التنبيهات -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">التنبيهات النشطة</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="show-resolved">
+                        <label class="form-check-label" for="show-resolved">إظهار المنتهية</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if alerts %}
+                        {% for alert in alerts %}
+                            <div class="alert-card {{ alert.alert_type }} {% if alert.is_resolved %}resolved{% endif %}"
+                                 data-alert-id="{{ alert.id }}">
+                                <div class="d-flex align-items-start">
+                                    <div class="alert-icon {{ alert.alert_type }}">
+                                        {% if alert.alert_type == 'low_stock' %}
+                                            <i class="bi bi-exclamation-triangle-fill"></i>
+                                        {% elif alert.alert_type == 'expiry' %}
+                                            <i class="bi bi-clock-fill"></i>
+                                        {% else %}
+                                            <i class="bi bi-info-circle-fill"></i>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-2">
+                                                    <a href="{% url 'products:product_detail' alert.product.id %}"
+                                                       class="text-decoration-none">
+                                                        {{ alert.product.name }}
+                                                    </a>
+                                                    {% if alert.warehouse %}
+                                                        <small class="text-muted">- {{ alert.warehouse.name }}</small>
+                                                    {% endif %}
+                                                </h6>
+                                                <p class="mb-2">{{ alert.message }}</p>
+                                                <div class="d-flex align-items-center">
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-clock"></i>
+                                                        {{ alert.created_at|timesince }}
+                                                    </small>
+                                                    {% if not alert.is_resolved %}
+                                                        <span class="badge bg-danger ms-2">نشط</span>
+                                                    {% else %}
+                                                        <span class="badge bg-success ms-2">تم الحل</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+
+                                            <div class="resolve-btn">
+                                                {% if not alert.is_resolved %}
+                                                    <button type="button" class="btn btn-success btn-sm resolve-alert"
+                                                            data-alert-id="{{ alert.id }}">
+                                                        <i class="bi bi-check-lg"></i>
+                                                        تم الحل
+                                                    </button>
+                                                {% else %}
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                            disabled>
+                                                        <i class="bi bi-check-lg"></i>
+                                                        منتهي
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        {% if not alert.is_resolved %}
+                                            <div class="mt-3">
+                                                <a href="{% url 'products:stock_adjustment' %}?product=
+                                                        {{ alert.product.id }}{% if alert.warehouse %}&warehouse={{ alert.warehouse.id }}{% endif %}"
+                                                   class="btn btn-outline-warning btn-sm me-2">
+                                                    <i class="bi bi-sliders"></i>
+                                                    تسوية المخزون
+                                                </a>
+                                                <a href="{% url 'products:product_update' alert.product.id %}"
+                                                   class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-pencil"></i>
+                                                    تعديل المنتج
+                                                </a>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                            <h5 class="text-success mt-3">لا توجد تنبيهات نشطة</h5>
+                            <p class="text-muted">جميع تنبيهات المخزون تحت السيطرة</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- أنواع التنبيهات -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">أنواع التنبيهات</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                            مخزون منخفض
+                        </span>
+                            <span class="badge bg-danger rounded-pill">{{ low_stock_count }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="bi bi-clock text-warning me-2"></i>
+                            انتهاء صلاحية
+                        </span>
+                            <span class="badge bg-warning rounded-pill">{{ expiry_count }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="bi bi-info-circle text-info me-2"></i>
+                            مخزون زائد
+                        </span>
+                            <span class="badge bg-info rounded-pill">{{ excess_count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'products:stock_adjustment' %}" class="btn btn-outline-warning">
+                            <i class="bi bi-sliders"></i>
+                            تسوية المخزون
+                        </a>
+                        <a href="{% url 'products:product_create' %}" class="btn btn-outline-success">
+                            <i class="bi bi-plus-lg"></i>
+                            إضافة منتج جديد
+                        </a>
+                        <a href="{% url 'products:stock_transfer' %}" class="btn btn-outline-info">
+                            <i class="bi bi-arrow-left-right"></i>
+                            تحويل المخزون
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- نصائح -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">نصائح لإدارة التنبيهات</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            راجع تنبيهات المخزون المنخفض يومياً
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            ضع خطط إعادة الطلب للمنتجات منخفضة المخزون
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            حل التنبيهات فور معالجة المشكلة
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            استخدم تقارير المخزون للتحليل الدوري
+                        </li>
+                        <li>
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            ضبط حدود المخزون يقلل من التنبيهات غير الضرورية
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // إظهار/إخفاء التنبيهات المنتهية
+            const showResolvedCheckbox = document.getElementById('show-resolved');
+            if (showResolvedCheckbox) {
+                showResolvedCheckbox.addEventListener('change', function () {
+                    const resolvedAlerts = document.querySelectorAll('.alert-card.resolved');
+                    resolvedAlerts.forEach(alert => {
+                        alert.style.display = this.checked ? 'block' : 'none';
+                    });
+                });
+            }
+
+            // حل التنبيه
+            document.querySelectorAll('.resolve-alert').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const alertId = this.dataset.alertId;
+                    const alertCard = this.closest('.alert-card');
+
+                    if (confirm('هل تريد标记 هذا التنبيه كمحلول؟')) {
+                        // هنا يمكن إضافة طلب AJAX لتحديث حالة التنبيه
+                        fetch(`/inventory/alerts/${alertId}/resolve/`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}',
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    alertCard.classList.add('resolved');
+                                    alertCard.querySelector('.resolve-btn').innerHTML = `
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="bi bi-check-lg"></i>
+                                منتهي
+                            </button>
+                        `;
+
+                                    // تحديث العداد
+                                    const activeBadge = alertCard.querySelector('.badge.bg-danger');
+                                    if (activeBadge) {
+                                        activeBadge.className = 'badge bg-success ms-2';
+                                        activeBadge.textContent = 'تم الحل';
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error resolving alert:', error);
+                                alert('حدث خطأ أثناء حل التنبيه');
+                            });
+                    }
+                });
+            });
+
+            // حل جميع التنبيهات
+            const resolveAllBtn = document.getElementById('resolve-all-btn');
+            if (resolveAllBtn) {
+                resolveAllBtn.addEventListener('click', function () {
+                    if (confirm('هل تريد حل جميع التنبيهات النشطة؟')) {
+                        document.querySelectorAll('.resolve-alert').forEach(btn => {
+                            btn.click();
+                        });
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}

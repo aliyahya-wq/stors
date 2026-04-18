@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}مواقع المخازن - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <style>
+        .map-container {
+            height: 600px;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+
+        .location-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-left: 4px solid #007bff;
+        }
+
+        .route-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .distance-badge {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">خريطة مواقع المخازن</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'inventory:warehouse_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- خريطة تفاعلية -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">خريطة المخازن</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="warehouse-map" class="map-container"></div>
+                </div>
+            </div>
+
+            <!-- معلومات المسارات -->
+            <div class="route-info">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="mb-3">معلومات النقل والمسارات</h4>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="text-center">
+                                    <div class="h3 mb-1">{{ active_routes }}</div>
+                                    <div class="small">مسارات نشطة</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="text-center">
+                                    <div class="h3 mb-1">{{ avg_transit_time }}</div>
+                                    <div class="small">ساعة متوسط الوقت</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="text-center">
+                                    <div class="h3 mb-1">{{ avg_transport_cost }}</div>
+                                    <div class="small">ريال متوسط التكلفة</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                    <span class="distance-badge">
+                        <i class="bi bi-geo-alt me-1"></i>
+                        إجمالي المسافات: {{ total_distance }} كم
+                    </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- قائمة المخازن -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">المخازن على الخريطة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for warehouse in warehouses %}
+                            <div class="list-group-item location-card" data-warehouse-id="{{ warehouse.id }}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ warehouse.name }}</h6>
+                                        <p class="text-muted small mb-2">
+                                            <i class="bi bi-geo-alt"></i>
+                                            {{ warehouse.address|truncatewords:4 }}
+                                        </p>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <span class="badge bg-primary">{{ warehouse.code }}</span>
+                                            <span class="badge bg-secondary">{{ warehouse.get_warehouse_type_display }}</span>
+                                            {% if warehouse.is_active %}
+                                                <span class="badge bg-success">نشط</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary view-on-map"
+                                            data-lat="{{ warehouse.location_lat|default:24.7136 }}"
+                                            data-lng="{{ warehouse.location_lng|default:46.6753 }}"
+                                            data-name="{{ warehouse.name }}"
+                                            data-address="{{ warehouse.address }}">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+
+                                <!-- معلومات النقل -->
+                                <div class="mt-2 pt-2 border-top">
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">المسافة</small>
+                                            <strong class="text-primary">{{ warehouse.distance }} كم</strong>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">الوقت</small>
+                                            <strong class="text-warning">{{ warehouse.transit_time }} ساعة</strong>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">التكلفة</small>
+                                            <strong class="text-success">{{ warehouse.transport_cost }} ر.س</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- إحصائيات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات المواقع</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="stat-card">
+                                <div class="stat-number text-primary">{{ warehouses.count }}</div>
+                                <div class="stat-label">المخازن</div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="stat-card">
+                                <div class="stat-number text-success">{{ total_distance }}</div>
+                                <div class="stat-label">كم إجمالي</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-card">
+                                <div class="stat-number text-warning">{{ avg_transit_time }}</div>
+                                <div class="stat-label">ساعة متوسطة</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-card">
+                                <div class="stat-number text-info">{{ active_routes }}</div>
+                                <div class="stat-label">مسارات نشطة</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // تهيئة الخريطة
+            const map = L.map('warehouse-map').setView([24.7136, 46.6753], 6);
+
+            // إضافة طبقة الخريطة
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // بيانات المخازن
+            const warehousesData = [
+                {% for warehouse in warehouses %}
+                    {
+                        id: {{ warehouse.id }},
+                        name: "{{ warehouse.name }}",
+                        lat: {{ warehouse.location_lat|default:24.7136 }},
+                        lng: {{ warehouse.location_lng|default:46.6753 }},
+                        address: "{{ warehouse.address }}",
+                        type: "{{ warehouse.warehouse_type }}",
+                        code: "{{ warehouse.code }}",
+                        is_active: {{ warehouse.is_active|yesno:"true,false" }},
+                        distance: "{{ warehouse.distance }}",
+                        transit_time: "{{ warehouse.transit_time }}",
+                        transport_cost: "{{ warehouse.transport_cost }}"
+                    },
+                {% endfor %}
+            ];
+
+            // إضافة علامات للمخازن
+            const markers = [];
+            const warehousesByType = {
+                'main': L.icon({
+                    iconUrl: '{% static "img/warehouse-main.png" %}',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32],
+                    popupAnchor: [0, -32]
+                }),
+                'branch': L.icon({
+                    iconUrl: '{% static "img/warehouse-branch.png" %}',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 28],
+                    popupAnchor: [0, -28]
+                }),
+                'future': L.icon({
+                    iconUrl: '{% static "img/warehouse-future.png" %}',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24],
+                    popupAnchor: [0, -24]
+                })
+            };
+
+            warehousesData.forEach(warehouse => {
+                const marker = L.marker([warehouse.lat, warehouse.lng], {
+                    icon: warehousesByType[warehouse.type] || L.icon({
+                        iconUrl: '{% static "img/warehouse-default.png" %}',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 30],
+                        popupAnchor: [0, -30]
+                    })
+                })
+                    .addTo(map)
+                    .bindPopup(`
+            <div class="text-center" style="min-width: 200px;">
+                <h6 class="mb-2">${warehouse.name}</h6>
+                <p class="small text-muted mb-2">${warehouse.address}</p>
+                <div class="d-flex flex-wrap gap-1 justify-content-center mb-2">
+                    <span class="badge bg-primary">${warehouse.code}</span>
+                    <span class="badge bg-secondary">${warehouse.type === 'main' ? 'رئيسي' : warehouse.type === 'branch' ? 'فرع' : 'مستقبلي'}</span>
+                    ${warehouse.is_active ? '<span class="badge bg-success">نشط</span>' : '<span class="badge bg-secondary">غير نشط</span>'}
+                </div>
+                <div class="small text-muted">
+                    <div>المسافة: ${warehouse.distance} كم</div>
+                    <div>الوقت: ${warehouse.transit_time} ساعة</div>
+                    <div>التكلفة: ${warehouse.transport_cost} ر.س</div>
+                </div>
+            </div>
+        `);
+                markers.push(marker);
+            });
+
+            // إضافة خطوط المسارات
+            if (warehousesData.length > 1) {
+                for (let i = 0; i < warehousesData.length - 1; i++) {
+                    const from = warehousesData[i];
+                    const to = warehousesData[i + 1];
+
+                    L.polyline([
+                        [from.lat, from.lng],
+                        [to.lat, to.lng]
+                    ], {
+                        color: '#007bff',
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '5, 10'
+                    }).addTo(map).bindPopup(`
+                <div class="text-center">
+                    <strong>${from.name} → ${to.name}</strong><br>
+                    <small>المسافة: ${from.distance} كم</small><br>
+                    <small>الوقت: ${from.transit_time} ساعة</small>
+                </div>
+            `);
+                }
+            }
+
+            // تكبير الخريطة عند النقر على مخزن
+            document.querySelectorAll('.view-on-map').forEach(button => {
+                button.addEventListener('click', function () {
+                    const lat = parseFloat(this.dataset.lat);
+                    const lng = parseFloat(this.dataset.lng);
+                    const name = this.dataset.name;
+                    const address = this.dataset.address;
+
+                    map.setView([lat, lng], 12);
+
+                    // فتح popup للعلامة المقابلة
+                    markers.forEach(marker => {
+                        const markerLat = marker.getLatLng().lat;
+                        const markerLng = marker.getLatLng().lng;
+                        if (Math.abs(markerLat - lat) < 0.01 && Math.abs(markerLng - lng) < 0.01) {
+                            marker.openPopup();
+                        }
+                    });
+                });
+            });
+
+            // جعل الخريطة مستجيبة
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+
+            // البحث في المخازن
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'form-control form-control-sm';
+            searchInput.placeholder = 'البحث في المخازن...';
+            searchInput.style.marginTop = '10px';
+
+            document.querySelector('.card-header').appendChild(searchInput);
+
+            searchInput.addEventListener('input', function () {
+                const query = this.value.toLowerCase();
+                const locationCards = document.querySelectorAll('.location-card');
+
+                locationCards.forEach(card => {
+                    const warehouseName = card.querySelector('h6').textContent.toLowerCase();
+                    const warehouseAddress = card.querySelector('.text-muted').textContent.toLowerCase();
+
+                    if (warehouseName.includes(query) || warehouseAddress.includes(query)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

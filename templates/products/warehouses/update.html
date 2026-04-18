@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تعديل {{ warehouse.name }} - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .stats-card {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stats-card .number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .stats-card .label {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+
+        .capacity-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">تعديل المخزن: {{ warehouse.name }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:warehouse_detail' warehouse.id %}" class="btn btn-outline-info me-2">
+                <i class="bi bi-eye"></i>
+                عرض
+            </a>
+            <a href="{% url 'products:warehouse_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">معلومات المخزن</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="warehouse-form">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">اسم المخزن *</label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                    <div class="text-danger small">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.code.id_for_label }}" class="form-label">كود المخزن *</label>
+                                {{ form.code }}
+                                {% if form.code.errors %}
+                                    <div class="text-danger small">{{ form.code.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.warehouse_type.id_for_label }}" class="form-label">نوع
+                                    المخزن</label>
+                                {{ form.warehouse_type }}
+                                {% if form.warehouse_type.errors %}
+                                    <div class="text-danger small">{{ form.warehouse_type.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.manager.id_for_label }}" class="form-label">مدير المخزن</label>
+                                {{ form.manager }}
+                                {% if form.manager.errors %}
+                                    <div class="text-danger small">{{ form.manager.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.address.id_for_label }}" class="form-label">عنوان المخزن *</label>
+                            {{ form.address }}
+                            {% if form.address.errors %}
+                                <div class="text-danger small">{{ form.address.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.capacity.id_for_label }}" class="form-label">السعة *</label>
+                                <div class="input-group">
+                                    {{ form.capacity }}
+                                    <span class="input-group-text">وحدة</span>
+                                </div>
+                                {% if form.capacity.errors %}
+                                    <div class="text-danger small">{{ form.capacity.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.phone.id_for_label }}" class="form-label">هاتف المخزن</label>
+                                {{ form.phone }}
+                                {% if form.phone.errors %}
+                                    <div class="text-danger small">{{ form.phone.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    مخزن نشط
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'products:warehouse_detail' warehouse.id %}"
+                               class="btn btn-outline-secondary me-md-2">
+                                إلغاء
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i>
+                                حفظ التغييرات
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- تحذير إذا كانت السعة الجديدة أقل من الاستخدام الحالي -->
+            {% if warehouse.get_used_capacity > 0 %}
+                <div class="card mt-4">
+                    <div class="card-header bg-warning">
+                        <h6 class="mb-0 text-dark"><i class="bi bi-exclamation-triangle"></i> تنبيه مهم</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="capacity-warning">
+                            <h6>هذا المخزن يحتوي على مخزون حالياً</h6>
+                            <p class="small text-muted mb-3">
+                                السعة الحالية: <strong>{{ warehouse.capacity }}</strong><br>
+                                السعة المستخدمة: <strong>{{ warehouse.get_used_capacity|floatformat:0 }}</strong><br>
+                                نسبة الاستخدام: <strong>{{ warehouse.get_usage_percentage|floatformat:1 }}%</strong>
+                            </p>
+
+                            <div class="alert alert-info small">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>ملاحظة:</strong> إذا قمت بتقليل السعة إلى أقل من الاستخدام الحالي،
+                                قد تواجه مشاكل في إدارة المخزون. يرجى التأكد من أن السعة الجديدة مناسبة.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <!-- إحصائيات المخزن -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إحصائيات المخزن</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="stats-card">
+                                <div class="number text-primary">{{ products_count }}</div>
+                                <div class="label">المنتجات</div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="stats-card">
+                                <div class="number text-success">{{ total_quantity }}</div>
+                                <div class="label">الكمية</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-card">
+                                <div class="number text-warning">{{ low_stock_count }}</div>
+                                <div class="label">منخفضة</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-card">
+                                <div class="number text-info">{{ out_of_stock_count }}</div>
+                                <div class="label">منتهية</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- شريط السعة -->
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-muted">استخدام السعة</small>
+                            <small class="text-muted">
+                                {{ warehouse.get_used_capacity|floatformat:0 }} / {{ warehouse.capacity }}
+                                ({{ warehouse.get_usage_percentage|floatformat:1 }}%)
+                            </small>
+                        </div>
+                        <div class="capacity-bar">
+                            <div class="capacity-fill
+                            {% if warehouse.get_usage_percentage < 50 %}capacity-low
+                            {% elif warehouse.get_usage_percentage < 80 %}capacity-medium
+                            {% else %}capacity-high{% endif %}"
+                                 style="width: {{ warehouse.get_usage_percentage }}%">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- معلومات المخزن -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">معلومات المخزن</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>النوع:</strong></td>
+                            <td>
+                            <span class="badge
+                                {% if warehouse.warehouse_type == 'main' %}bg-success
+                                {% elif warehouse.warehouse_type == 'branch' %}bg-primary
+                                {% else %}bg-secondary{% endif %}">
+                                {{ warehouse.get_warehouse_type_display }}
+                            </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>الحالة:</strong></td>
+                            <td>
+                                {% if warehouse.is_active %}
+                                    <span class="badge bg-success">نشط</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">غير نشط</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>المدير:</strong></td>
+                            <td>{{ warehouse.manager.get_full_name|default:warehouse.manager.username|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>تاريخ الإنشاء:</strong></td>
+                            <td>{{ warehouse.created_at|date:"Y/m/d" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'products:stock_transfer' %}?from_warehouse={{ warehouse.id }}"
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-arrow-left-right"></i>
+                            تحويل من المخزن
+                        </a>
+                        <a href="{% url 'products:stock_adjustment' %}?warehouse={{ warehouse.id }}"
+                           class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-sliders"></i>
+                            تسوية المخزون
+                        </a>
+                        <a href="{% url 'products:product_list' %}?warehouse={{ warehouse.id }}"
+                           class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-box"></i>
+                            عرض المنتجات
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // التحقق من صحة النموذج
+            const warehouseForm = document.getElementById('warehouse-form');
+            if (warehouseForm) {
+                warehouseForm.addEventListener('submit', function (e) {
+                    const nameInput = document.getElementById('id_name');
+                    const codeInput = document.getElementById('id_code');
+                    const addressInput = document.getElementById('id_address');
+                    const capacityInput = document.getElementById('id_capacity');
+
+                    let isValid = true;
+
+                    // التحقق من الاسم
+                    if (!nameInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال اسم المخزن');
+                        nameInput.focus();
+                    }
+                    // التحقق من الكود
+                    else if (!codeInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال كود المخزن');
+                        codeInput.focus();
+                    }
+                    // التحقق من العنوان
+                    else if (!addressInput.value.trim()) {
+                        isValid = false;
+                        alert('يرجى إدخال عنوان المخزن');
+                        addressInput.focus();
+                    }
+                    // التحقق من السعة
+                    else if (!capacityInput.value || parseFloat(capacityInput.value) <= 0) {
+                        isValid = false;
+                        alert('السعة يجب أن تكون رقم موجب');
+                        capacityInput.focus();
+                    }
+
+                    if (!isValid) {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    // تحذير إذا كانت السعة الجديدة أقل من الاستخدام الحالي
+                    const currentCapacity = {{ warehouse.get_used_capacity }};
+                    const newCapacity = parseFloat(capacityInput.value);
+
+                    if (newCapacity < currentCapacity) {
+                        const confirmMessage = `السعة الجديدة (${newCapacity}) أقل من الاستخدام الحالي (${currentCapacity}).
+هذا قد يسبب مشاكل في إدارة المخزون. هل تريد المتابعة؟`;
+
+                        if (!confirm(confirmMessage)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    }
+
+                    return true;
+                });
+            }
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}حركات المخزون - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .movement-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .quantity-positive {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .quantity-negative {
+            color: var(--danger-color);
+            font-weight: bold;
+        }
+
+        .filter-card {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .movement-row {
+            transition: all 0.3s ease;
+        }
+
+        .movement-row:hover {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">حركات المخزون</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:stock_adjustment' %}" class="btn btn-warning me-2">
+                <i class="bi bi-sliders"></i>
+                تسوية المخزون
+            </a>
+            <a href="{% url 'products:stock_transfer' %}" class="btn btn-info">
+                <i class="bi bi-arrow-left-right"></i>
+                تحويل المخزون
+            </a>
+        </div>
+    </div>
+
+    <!-- الفلترة -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">فلاتر البحث</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">نوع الحركة</label>
+                    <select name="type" class="form-select">
+                        <option value="">جميع الأنواع</option>
+                        <option value="purchase" {% if filters.type == 'purchase' %}selected{% endif %}>شراء</option>
+                        <option value="sale" {% if filters.type == 'sale' %}selected{% endif %}>بيع</option>
+                        <option value="transfer_in" {% if filters.type == 'transfer_in' %}selected{% endif %}>تحويل
+                            داخلي
+                        </option>
+                        <option value="transfer_out" {% if filters.type == 'transfer_out' %}selected{% endif %}>تحويل
+                            خارجي
+                        </option>
+                        <option value="adjustment" {% if filters.type == 'adjustment' %}selected{% endif %}>تسوية
+                        </option>
+                        <option value="return" {% if filters.type == 'return' %}selected{% endif %}>مرتجع</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">المنتج</label>
+                    <select name="product" class="form-select">
+                        <option value="">جميع المنتجات</option>
+                        {% for product in products %}
+                            <option value="{{ product.id }}"
+                                    {% if filters.product == product.id|stringformat:"i" %}selected{% endif %}>
+                                {{ product.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">المخزن</label>
+                    <select name="warehouse" class="form-select">
+                        <option value="">جميع المخازن</option>
+                        {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}"
+                                    {% if filters.warehouse == warehouse.id|stringformat:"i" %}selected{% endif %}>
+                                {{ warehouse.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel"></i>
+                            تطبيق الفلترة
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- جدول الحركات -->
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">سجل الحركات</h5>
+            <div class="text-muted">
+                عرض {{ page_obj.start_index }} - {{ page_obj.end_index }} من {{ page_obj.paginator.count }}
+            </div>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                        <tr>
+                            <th>التاريخ</th>
+                            <th>المنتج</th>
+                            <th>المخزن</th>
+                            <th>نوع الحركة</th>
+                            <th>الكمية</th>
+                            <th>المخزون قبل</th>
+                            <th>المخزون بعد</th>
+                            <th>المستخدم</th>
+                            <th>ملاحظات</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for movement in page_obj %}
+                            <tr class="movement-row">
+                                <td>
+                                    <small class="text-muted">{{ movement.created_at|date:"Y/m/d" }}</small>
+                                    <br>
+                                    <small class="text-muted">{{ movement.created_at|date:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    <a href="{% url 'products:product_detail' movement.product.id %}"
+                                       class="text-decoration-none">
+                                        {{ movement.product.name }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ movement.product.sku }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ movement.warehouse.name }}</span>
+                                </td>
+                                <td>
+                            <span class="badge 
+                                {% if movement.movement_type == 'purchase' or movement.movement_type == 'transfer_in' %}bg-success
+                                {% elif movement.movement_type == 'sale' or movement.movement_type == 'transfer_out' %}bg-danger
+                                {% else %}bg-warning{% endif %} movement-badge">
+                                {{ movement.get_movement_type_display }}
+                            </span>
+                                    {% if movement.reference_number %}
+                                        <br>
+                                        <small class="text-muted">{{ movement.reference_number }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="{% if movement.quantity > 0 %}quantity-positive{% else %}quantity-negative{% endif %}">
+                                    {% if movement.quantity > 0 %}+{% endif %}{{ movement.quantity }}
+                                </td>
+                                <td>{{ movement.quantity_before }}</td>
+                                <td>{{ movement.quantity_after }}</td>
+                                <td>
+                                    <small>{{ movement.created_by.get_full_name|default:movement.created_by.username }}</small>
+                                </td>
+                                <td>
+                                    {% if movement.notes %}
+                                        <span class="text-muted" title="{{ movement.notes }}">
+                                <i class="bi bi-chat-text"></i>
+                            </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- الترقيم -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=
+                                            {{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        السابق
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=
+                                                {{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            {{ num }}
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=
+                                            {{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        التالي
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-arrow-left-right text-muted" style="font-size: 4rem;"></i>
+                    <h5 class="text-muted mt-3">لا توجد حركات</h5>
+                    <p class="text-muted">لم يتم تسجيل أي حركات للمخزون بعد</p>
+                    <a href="{% url 'products:stock_adjustment' %}" class="btn btn-primary">
+                        <i class="bi bi-sliders"></i>
+                        بدء تسوية المخزون
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-success">{{ total_incoming }}</h4>
+                    <p class="text-muted mb-0">حركات دخول</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-danger">{{ total_outgoing }}</h4>
+                    <p class="text-muted mb-0">حركات خروج</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-warning">{{ total_adjustments }}</h4>
+                    <p class="text-muted mb-0">تسويات</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-info">{{ page_obj.paginator.count }}</h4>
+                    <p class="text-muted mb-0">إجمالي الحركات</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // تحديث الفلترة تلقائياً
+            const filterSelects = document.querySelectorAll('select[name="type"], select[name="product"], select[name="warehouse"]');
+            filterSelects.forEach(select => {
+                select.addEventListener('change', function () {
+                    this.form.submit();
+                });
+            });
+        });
+    </script>
+{% endblock %}

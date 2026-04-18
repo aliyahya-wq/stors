@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تفاصيل المستخدم - نظام الإدارة{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="fas fa-user me-2"></i>تفاصيل المستخدم
+            </h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <a href="{% url 'accounts:user_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-right me-2"></i>العودة للقائمة
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- User Information -->
+            <div class="col-md-8">
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-info-circle me-2"></i>معلومات المستخدم
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">الاسم الكامل</label>
+                                    <p class="form-control-plaintext">{{ user_obj.first_name }} {{ user_obj.last_name }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">البريد الإلكتروني</label>
+                                    <p class="form-control-plaintext">{{ user_obj.email }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">رقم الهاتف</label>
+                                    <p class="form-control-plaintext">{{ user_obj.phone }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">القسم</label>
+                                    <p class="form-control-plaintext">{{ user_obj.department }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">الدور</label>
+                                    <p>
+                                    <span class="badge badge-{{ user_obj.role.name }}">
+                                        {{ user_obj.role.get_name_display }}
+                                    </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">الحالة</label>
+                                    <p>
+                                        {% if user_obj.is_active %}
+                                            <span class="badge bg-success">نشط</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">معطل</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">تاريخ الإنشاء</label>
+                                    <p class="form-control-plaintext">{{ user_obj.created_at|date:"Y-m-d H:i" }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">آخر تحديث</label>
+                                    <p class="form-control-plaintext">{{ user_obj.updated_at|date:"Y-m-d H:i" }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">آخر تسجيل دخول</label>
+                                    <p class="form-control-plaintext">
+                                        {% if user_obj.last_login %}
+                                            {{ user_obj.last_login|date:"Y-m-d H:i" }}
+                                        {% else %}
+                                            لم يسجل دخول بعد
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Actions -->
+            <div class="col-md-4">
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-cogs me-2"></i>الإجراءات
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'accounts:user_update' user_obj.pk %}" class="btn btn-primary">
+                                <i class="fas fa-edit me-2"></i>تعديل المستخدم
+                            </a>
+                            {% if user_obj != request.user %}
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                        data-bs-target="#deleteModal">
+                                    <i class="fas fa-trash me-2"></i>حذف المستخدم
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role Information -->
+                <div class="card shadow">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-user-tag me-2"></i>معلومات الدور
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">{{ user_obj.role.get_name_display }}</h6>
+                        <p class="card-text text-muted">{{ user_obj.role.description }}</p>
+
+                        <h6 class="mt-3">الصلاحيات:</h6>
+                        <div class="mt-2">
+                            {% for permission in user_obj.role.permissions.all %}
+                                <span class="badge bg-light text-dark mb-1">{{ permission.name }}</span>
+                            {% empty %}
+                                <p class="text-muted">لا توجد صلاحيات محددة</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تأكيد الحذف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل أنت متأكد من رغبتك في حذف المستخدم
+                        <strong>{{ user_obj.first_name }} {{ user_obj.last_name }}</strong>؟</p>
+                    <p class="text-danger">هذا الإجراء لا يمكن التراجع عنه.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <form method="post" action="{% url 'accounts:user_delete' user_obj.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">حذف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .badge-super_admin {
+            background-color: #e74c3c;
+        }
+
+        .badge-admin {
+            background-color: #3498db;
+        }
+
+        .badge-inventory_manager {
+            background-color: #f39c12;
+        }
+
+        .badge-purchase_manager {
+            background-color: #9b59b6;
+        }
+
+        .badge-sales_manager {
+            background-color: #27ae60;
+        }
+
+        .badge-viewer {
+            background-color: #95a5a6;
+        }
+
+        .form-control-plaintext {
+            padding: 0.375rem 0;
+            margin-bottom: 0;
+            line-height: 1.5;
+            background-color: transparent;
+            border: solid transparent;
+            border-width: 1px 0;
+        }
+    </style>
+{% endblock %}

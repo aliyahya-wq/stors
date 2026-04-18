@@ -1,0 +1,557 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ماسح الباركود - نظام المخزون{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <style>
+        .scanner-container {
+            background: #1a1a1a;
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        #scanner-video {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+        }
+
+        .scanner-frame {
+            width: 250px;
+            height: 150px;
+            border: 2px solid #00ff00;
+            border-radius: 1rem;
+            position: relative;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                border-color: #00ff00;
+            }
+            50% {
+                border-color: #00cc00;
+            }
+            100% {
+                border-color: #00ff00;
+            }
+        }
+
+        .scan-result {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .product-card {
+            border: 1px solid #e3e6f0;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .manual-input {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+
+        .scan-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            border-right: 3px solid var(--accent-color);
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: white;
+            border-radius: 0.25rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">ماسح الباركود</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'products:barcode_generator' %}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-upc"></i>
+                مولد الباركود
+            </a>
+            <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+                رجوع للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- الماسح -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">ماسح الباركود</h5>
+                </div>
+                <div class="card-body">
+                    <div class="scanner-container">
+                        <video id="scanner-video" playsinline></video>
+                        <div class="scanner-overlay" id="scanner-overlay">
+                            <div class="scanner-frame"></div>
+                            <p class="mt-3 mb-0">ضع الباركود داخل الإطار للمسح</p>
+                            <small class="text-muted">يجب السماح للكاميرا بالعمل</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-success" id="start-scanner">
+                                    <i class="bi bi-camera-video"></i>
+                                    تشغيل الماسح
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-danger" id="stop-scanner" disabled>
+                                    <i class="bi bi-camera-video-off"></i>
+                                    إيقاف الماسح
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- نتيجة المسح -->
+            <div class="card mt-4 d-none" id="scan-result-card">
+                <div class="card-header">
+                    <h5 class="mb-0">نتيجة المسح</h5>
+                </div>
+                <div class="card-body">
+                    <div class="scan-result">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h6 id="result-title">تم مسح الباركود بنجاح</h6>
+                                <p class="text-muted mb-0" id="result-barcode"></p>
+                            </div>
+                            <span class="badge bg-success" id="result-status">نجح</span>
+                        </div>
+
+                        <div id="product-info">
+                            <!-- سيتم ملؤها بالبيانات من السيرفر -->
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-secondary me-md-2" id="clear-result">
+                            <i class="bi bi-x-circle"></i>
+                            مسح النتيجة
+                        </button>
+                        <button type="button" class="btn btn-primary" id="search-again">
+                            <i class="bi bi-arrow-repeat"></i>
+                            بحث مرة أخرى
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- الإدخال اليدوي -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">الإدخال اليدوي</h5>
+                </div>
+                <div class="card-body">
+                    <div class="manual-input">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="manual-barcode"
+                                   placeholder="أدخل رقم الباركود يدوياً">
+                            <button class="btn btn-primary" type="button" id="search-manual">
+                                <i class="bi bi-search"></i>
+                                بحث
+                            </button>
+                        </div>
+                        <div class="form-text mt-2">
+                            يمكنك إدخال رقم الباركود يدوياً إذا كان الماسح لا يعمل
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- سجل المسح -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">سجل المسح</h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="clear-history">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="scan-history" id="scan-history">
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-clock-history" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0">لا توجد عمليات مسح سابقة</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">إجراءات سريعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'products:stock_adjustment' %}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-sliders"></i>
+                            تسوية المخزون
+                        </a>
+                        <a href="{% url 'products:product_create' %}" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-plus-lg"></i>
+                            إضافة منتج جديد
+                        </a>
+                        <a href="{% url 'products:barcode_generator' %}" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-upc"></i>
+                            توليد باركود
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- نصائح المسح -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">نصائح للمسح</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            تأكد من إضاءة كافية على الباركود
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            حافظ على مسافة 10-15 سم بين الكاميرا والباركود
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            تجنب الأضواء الساطعة خلف الباركود
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            تأكد من وضوح الباركود وعدم وجود خدوش
+                        </li>
+                        <li>
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            استخدم الإدخال اليدوي إذا استمرت المشكلة
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // عناصر DOM
+            const video = document.getElementById('scanner-video');
+            const overlay = document.getElementById('scanner-overlay');
+            const startBtn = document.getElementById('start-scanner');
+            const stopBtn = document.getElementById('stop-scanner');
+            const scanResultCard = document.getElementById('scan-result-card');
+            const resultBarcode = document.getElementById('result-barcode');
+            const resultStatus = document.getElementById('result-status');
+            const resultTitle = document.getElementById('result-title');
+            const productInfo = document.getElementById('product-info');
+            const clearResultBtn = document.getElementById('clear-result');
+            const searchAgainBtn = document.getElementById('search-again');
+            const manualBarcode = document.getElementById('manual-barcode');
+            const searchManualBtn = document.getElementById('search-manual');
+            const scanHistory = document.getElementById('scan-history');
+            const clearHistoryBtn = document.getElementById('clear-history');
+
+            let scannerActive = false;
+            let stream = null;
+
+            // تشغيل الماسح
+            async function startScanner() {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment',
+                            width: {ideal: 1280},
+                            height: {ideal: 720}
+                        }
+                    });
+
+                    video.srcObject = stream;
+                    overlay.style.display = 'none';
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    scannerActive = true;
+
+                    // بدء تحليل الباركود
+                    startBarcodeDetection();
+
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    alert('تعذر الوصول إلى الكاميرا. يرجى التأكد من السماح باستخدام الكاميرا.');
+                }
+            }
+
+            // إيقاف الماسح
+            function stopScanner() {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+
+                video.srcObject = null;
+                overlay.style.display = 'flex';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                scannerActive = false;
+
+                // إيقاف تحليل الباركود
+                Quagga.stop();
+            }
+
+            // بدء كشف الباركود
+            function startBarcodeDetection() {
+                Quagga.init({
+                    inputStream: {
+                        name: "Live",
+                        type: "LiveStream",
+                        target: video,
+                        constraints: {
+                            width: 640,
+                            height: 480,
+                            facingMode: "environment"
+                        }
+                    },
+                    decoder: {
+                        readers: [
+                            "code_128_reader",
+                            "ean_reader",
+                            "ean_8_reader",
+                            "code_39_reader",
+                            "upc_reader",
+                            "upc_e_reader"
+                        ]
+                    }
+                }, function (err) {
+                    if (err) {
+                        console.error('Error initializing Quagga:', err);
+                        return;
+                    }
+                    Quagga.start();
+                });
+
+                Quagga.onDetected(function (result) {
+                    const code = result.codeResult.code;
+                    handleBarcodeScan(code);
+                });
+            }
+
+            // معالجة الباركود الممسوح
+            function handleBarcodeScan(barcode) {
+                if (!scannerActive) return;
+
+                // إيقاف الماسح مؤقتاً
+                stopScanner();
+
+                // البحث عن المنتج
+                searchProductByBarcode(barcode);
+
+                // إضافة إلى السجل
+                addToScanHistory(barcode, 'auto');
+            }
+
+            // البحث عن المنتج بالباركود
+            function searchProductByBarcode(barcode) {
+                fetch(`{% url 'products:search_by_barcode' %}?barcode=${encodeURIComponent(barcode)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        displayScanResult(barcode, data);
+                    })
+                    .catch(error => {
+                        console.error('Error searching product:', error);
+                        displayScanResult(barcode, {success: false, message: 'خطأ في البحث'});
+                    });
+            }
+
+            // عرض نتيجة المسح
+            function displayScanResult(barcode, data) {
+                resultBarcode.textContent = `الباركود: ${barcode}`;
+                scanResultCard.classList.remove('d-none');
+
+                if (data.success) {
+                    resultStatus.textContent = 'نجح';
+                    resultStatus.className = 'badge bg-success';
+                    resultTitle.textContent = 'تم العثور على المنتج';
+
+                    const product = data.product;
+                    productInfo.innerHTML = `
+                <div class="product-card">
+                    <div class="d-flex align-items-center">
+                        ${product.main_image ?
+                        `<img src="${product.main_image}" alt="${product.name}" class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">` :
+                        `<div class="bg-light rounded d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
+                                <i class="bi bi-image text-muted"></i>
+                            </div>`
+                    }
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">${product.name}</h6>
+                            <p class="text-muted small mb-1">SKU: ${product.sku}</p>
+                            <p class="text-success mb-0">السعر: ${product.selling_price} ر.س</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a href="/products/products/${product.id}/" class="btn btn-sm btn-outline-primary me-2">
+                            <i class="bi bi-eye"></i>
+                            عرض التفاصيل
+                        </a>
+                        <a href="/products/inventory/adjustment/?product=${product.id}" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-sliders"></i>
+                            تسوية المخزون
+                        </a>
+                    </div>
+                </div>
+            `;
+                } else {
+                    resultStatus.textContent = 'فشل';
+                    resultStatus.className = 'badge bg-danger';
+                    resultTitle.textContent = 'لم يتم العثور على المنتج';
+
+                    productInfo.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    ${data.message || 'المنتج غير موجود في النظام'}
+                </div>
+                <div class="d-grid">
+                    <a href="{% url 'products:product_create' %}?barcode=${barcode}" class="btn btn-success">
+                        <i class="bi bi-plus-lg"></i>
+                        إضافة منتج جديد بهذا الباركود
+                    </a>
+                </div>
+            `;
+                }
+
+                // التمرير إلى النتيجة
+                scanResultCard.scrollIntoView({behavior: 'smooth'});
+            }
+
+            // إضافة إلى سجل المسح
+            function addToScanHistory(barcode, type) {
+                const history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
+                const timestamp = new Date().toLocaleString('ar-SA');
+
+                history.unshift({
+                    barcode: barcode,
+                    type: type,
+                    timestamp: timestamp
+                });
+
+                // الاحتفاظ بأخر 20 مسح فقط
+                if (history.length > 20) {
+                    history.pop();
+                }
+
+                localStorage.setItem('scanHistory', JSON.stringify(history));
+                updateScanHistoryDisplay();
+            }
+
+            // تحديث عرض سجل المسح
+            function updateScanHistoryDisplay() {
+                const history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
+
+                if (history.length === 0) {
+                    scanHistory.innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <i class="bi bi-clock-history" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">لا توجد عمليات مسح سابقة</p>
+                </div>
+            `;
+                    return;
+                }
+
+                scanHistory.innerHTML = history.map(item => `
+            <div class="history-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong>${item.barcode}</strong>
+                    <small class="text-muted">${item.type === 'auto' ? 'مسح' : 'يدوي'}</small>
+                </div>
+                <small class="text-muted">${item.timestamp}</small>
+            </div>
+        `).join('');
+            }
+
+            // مسح سجل المسح
+            function clearScanHistory() {
+                if (confirm('هل تريد مسح سجل المسح بالكامل؟')) {
+                    localStorage.removeItem('scanHistory');
+                    updateScanHistoryDisplay();
+                }
+            }
+
+            // أحداث
+            startBtn.addEventListener('click', startScanner);
+            stopBtn.addEventListener('click', stopScanner);
+            clearResultBtn.addEventListener('click', function () {
+                scanResultCard.classList.add('d-none');
+            });
+            searchAgainBtn.addEventListener('click', function () {
+                scanResultCard.classList.add('d-none');
+                startScanner();
+            });
+            searchManualBtn.addEventListener('click', function () {
+                const barcode = manualBarcode.value.trim();
+                if (barcode) {
+                    searchProductByBarcode(barcode);
+                    addToScanHistory(barcode, 'manual');
+                    manualBarcode.value = '';
+                } else {
+                    alert('يرجى إدخال رقم الباركود');
+                }
+            });
+            clearHistoryBtn.addEventListener('click', clearScanHistory);
+
+            // الإدخال اليدوي بالضغط على Enter
+            manualBarcode.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    searchManualBtn.click();
+                }
+            });
+
+            // التهيئة الأولية
+            updateScanHistoryDisplay();
+        });
+    </script>
+{% endblock %}

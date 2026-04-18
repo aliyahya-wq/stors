@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة تحكم المشتريات{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">لوحة تحكم المشتريات</h1>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-primary" onclick="window.location.href='#'">
+                <i class="fas fa-plus me-2"></i>
+                إضافة طلب شراء
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value">0</div>
+                <div class="stat-label">إجمالي طلبات الشراء</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success">
+                <div class="stat-value">0</div>
+                <div class="stat-label">طلبات قيد الانتظار</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-value">0</div>
+                <div class="stat-label">إجمالي الموردين</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-danger">
+                <div class="stat-value">0</div>
+                <div class="stat-label">إجمالي القيمة</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="recent-activity p-4 bg-white rounded shadow-sm">
+                <h4 class="mb-3">أحدث طلبات الشراء</h4>
+                <p class="text-muted">لا توجد طلبات شراء حديثة</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="quick-actions p-4 bg-white rounded shadow-sm">
+                <h4 class="mb-3">إجراءات سريعة</h4>
+                <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="window.location.href='#'">
+                    <i class="fas fa-plus me-2"></i>
+                    طلب شراء جديد
+                </button>
+                <button type="button" class="btn btn-outline-success w-100 mb-2" onclick="window.location.href='#'">
+                    <i class="fas fa-users me-2"></i>
+                    إدارة الموردين
+                </button>
+                <button type="button" class="btn btn-outline-info w-100" onclick="window.location.href='#'">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    تقارير المشتريات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
