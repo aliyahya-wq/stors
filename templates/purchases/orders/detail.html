@@ -12,8 +12,8 @@
             <p class="text-muted mb-0">تاريخ الإنشاء: {{ order.created_at|date:"Y-m-d H:i" }}</p>
         </div>
         <div class="gap-2 d-flex">
-            <a href="{% url 'purchases:purchase_pdf' order.id %}" class="btn btn-secondary">
-                <i class="fas fa-file-pdf me-1"></i> تحميل PDF
+            <a href="{% url 'purchases:purchase_pdf' order.id %}" class="btn-pdf-header shadow-sm">
+                <i class="fas fa-file-pdf me-2"></i> تحميل PDF احترافي
             </a>
             <button onclick="window.print()" class="btn btn-info text-white">
                 <i class="fas fa-print me-1"></i> طباعة
@@ -147,6 +147,22 @@
 
 {% block extra_css %}
 <style>
+    .btn-pdf-header {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        color: white !important;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .btn-pdf-header:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(220,38,38,0.4); }
+    .btn-pdf-header:active { transform: translateY(0); }
+
     @media print {
         .no-print { display: none !important; }
         .sidebar { display: none !important; }

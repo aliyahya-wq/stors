@@ -58,19 +58,68 @@ def custom_logout(request):
     return redirect('accounts:login')
 
 
+from django.db.models import Sum
+from sales.models import SalesInvoice, Customer
+from purchases.models import PurchaseOrder, Supplier
+from inventory.models import StockAlert, Warehouse
+from products.models import Product
+
 @login_required
 def dashboard(request):
-    # إحصائيات المستخدمين
+    # Financial Totals (Paid Sales & Completed Purchases)
+    total_sales = SalesInvoice.objects.filter(status='paid').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_purchases = PurchaseOrder.objects.filter(status='completed').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # Entity Counts
+    product_count = Product.objects.filter(is_active=True).count()
+    customer_count = Customer.objects.filter(is_active=True).count()
+    supplier_count = Supplier.objects.filter(is_active=True).count()
+    warehouse_count = Warehouse.objects.filter(is_active=True).count()
+    
+    # Alerts Statistics (The focus of the request)
+    unresolved_alerts = StockAlert.objects.filter(is_resolved=False)
+    total_alerts = unresolved_alerts.count()
+    
+    # Alert breakdown
+    low_stock_alerts = unresolved_alerts.filter(alert_type='low_stock').count()
+    expiry_alerts = unresolved_alerts.filter(alert_type='expiry').count()
+    
+    # Recent Transactions & Alerts
+    recent_invoices = SalesInvoice.objects.order_by('-created_at')[:5]
+    recent_purchases = PurchaseOrder.objects.order_by('-created_at')[:5]
+    recent_alerts = unresolved_alerts.order_by('-created_at')[:5]
+
+    context = {
+        'total_sales': total_sales,
+        'total_purchases': total_purchases,
+        'product_count': product_count,
+        'customer_count': customer_count,
+        'supplier_count': supplier_count,
+        'warehouse_count': warehouse_count,
+        'total_alerts': total_alerts,
+        'low_stock_alerts': low_stock_alerts,
+        'expiry_alerts': expiry_alerts,
+        'recent_invoices': recent_invoices,
+        'recent_purchases': recent_purchases,
+        'recent_alerts': recent_alerts,
+    }
+    return render(request, 'accounts/dashboard.html', context)
+
+
+@login_required
+@role_required(['admin', 'super_admin'])
+def user_dashboard(request):
+    # User Statistics
     total_users = CustomUser.objects.count()
     active_users = CustomUser.objects.filter(is_active=True).count()
     
-    # توزيع المستخدمين حسب الأدوار
+    # Role Distribution
     role_distribution = UserRole.objects.annotate(user_count=Count('customuser'))
     
-    # آخر النشاطات (لجميع المستخدمين)
+    # System Activities (Latest 20)
     all_activities = ActivityLog.objects.select_related('user').order_by('-timestamp')[:20]
     
-    # آخر مستخدمين مسجلين
+    # Recently Registered Users
     recent_users = CustomUser.objects.order_by('-date_joined')[:5]
 
     context = {
@@ -80,8 +129,7 @@ def dashboard(request):
         'all_activities': all_activities,
         'recent_users': recent_users,
     }
-    return render(request, 'accounts/dashboard.html', context)
-
+    return render(request, 'accounts/users/dashboard.html', context)
 
 class UserListView(AdminRequiredMixin, ListView):
     model = CustomUser

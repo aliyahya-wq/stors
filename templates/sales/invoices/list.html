@@ -3,29 +3,74 @@
 
 {% block title %}فواتير المبيعات - نظام المخازن{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-header h1 { font-size: 1.45rem; font-weight: 700; color: #1e293b; }
+    .filter-card { border-radius: 12px; border: none; }
+    .filter-card .form-control, .filter-card .form-select { border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 0.87rem; }
+    .table-card { border-radius: 12px; border: none; overflow: hidden; }
+    .table thead th { background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 11px 14px; border: none; white-space: nowrap; }
+    .table tbody td { padding: 12px 14px; vertical-align: middle; border-color: #f1f5f9; font-size: 0.88rem; }
+    .table tbody tr:hover { background: #f8fafc; }
+    
+    .status-paid     { background:rgba(34,197,94,0.12);  color:#16a34a; border:1px solid rgba(34,197,94,0.3);   padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; white-space:nowrap; }
+    .status-pending  { background:rgba(245,158,11,0.12); color:#d97706; border:1px solid rgba(245,158,11,0.3);  padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; white-space:nowrap; }
+    .status-cancelled{ background:rgba(239,68,68,0.1);   color:#dc2626; border:1px solid rgba(239,68,68,0.25);  padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; white-space:nowrap; }
+
+    /* ── PDF Button – Prominent ──────────────────────────────────── */
+    .btn-pdf {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        color: #fff !important;
+        border: none;
+        border-radius: 7px;
+        width: 34px; height: 34px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.92rem;
+        box-shadow: 0 2px 8px rgba(220,38,38,0.35);
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .btn-pdf:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(220,38,38,0.5); }
+    .btn-pdf:active { transform: scale(0.97); }
+
+    .btn-act { width:34px; height:34px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; font-size:0.85rem; transition:all 0.15s; }
+    .btn-act:hover { transform: scale(1.1); }
+    .empty-state { padding:60px 20px; text-align:center; }
+    .empty-state i { font-size:3.5rem; color:#cbd5e1; }
+    
+    .inv-badge { font-size:0.82rem; font-weight:700; color:#059669; background:rgba(16,185,129,0.1); padding:3px 8px; border-radius:6px; letter-spacing:0.03em; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-file-invoice-dollar me-2 text-primary"></i>
-            فواتير المبيعات
-        </h1>
-        <a href="{% url 'sales:create' %}" class="btn btn-primary">
-            <i class="fas fa-plus me-1"></i>
-            إنشاء فاتورة جديدة
+<div class="container-fluid py-4 px-4">
+
+    <!-- Header -->
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1"><i class="fas fa-file-invoice-dollar text-success me-2"></i>فواتير المبيعات</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0" style="font-size:0.83rem">
+                    <li class="breadcrumb-item"><a href="{% url 'sales:dashboard' %}" class="text-decoration-none">المبيعات</a></li>
+                    <li class="breadcrumb-item active">الفواتير</li>
+                </ol>
+            </nav>
+        </div>
+        <a href="{% url 'sales:create' %}" class="btn btn-success rounded-3 shadow-sm px-4">
+            <i class="fas fa-plus me-2"></i>إنشاء فاتورة جديدة
         </a>
     </div>
 
-    <!-- بطاقة البحث والفلترة -->
-    <div class="card shadow mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3 align-items-end">
+    <!-- Filter Card -->
+    <div class="card filter-card shadow-sm mb-4">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2 align-items-end">
                 <div class="col-md-4">
-                    <label class="form-label small font-weight-bold">ابحث عن عميل</label>
+                    <label class="form-label" style="font-size:0.78rem;font-weight:700;color:#64748b">ابحث عن عميل</label>
                     <input type="text" name="customer_name" class="form-control" placeholder="اسم العميل..." value="{{ request.GET.customer_name }}">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small font-weight-bold">حالة الفاتورة</label>
+                    <label class="form-label" style="font-size:0.78rem;font-weight:700;color:#64748b">حالة الفاتورة</label>
                     <select name="status" class="form-select">
                         <option value="">كل الحالات</option>
                         <option value="paid" {% if request.GET.status == 'paid' %}selected{% endif %}>مدفوعة</option>
@@ -34,84 +79,106 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small font-weight-bold">التاريخ</label>
+                    <label class="form-label" style="font-size:0.78rem;font-weight:700;color:#64748b">التاريخ</label>
                     <input type="date" name="date" class="form-control" value="{{ request.GET.date }}">
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-outline-primary w-100">
-                        <i class="fas fa-search me-1"></i> بحث
+                    <button type="submit" class="btn btn-success rounded-3 w-100">
+                        <i class="fas fa-search me-1"></i> بحث وتصفية
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- جدول الفواتير -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">قائمة الفواتير</h6>
+    <!-- Table -->
+    <div class="card table-card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 px-4" style="border-bottom:1px solid #f1f5f9">
+            <h6 class="fw-bold mb-0 text-dark">
+                <i class="fas fa-list-alt text-success me-2"></i>قائمة فواتير المبيعات
+            </h6>
+            <span class="badge" style="background:rgba(16,185,129,0.12);color:#059669;font-size:0.78rem;padding:5px 10px;border-radius:20px">
+                {{ invoices|length }} فاتورة
+            </span>
         </div>
-        <div class="card-body">
-            {% if invoices %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>رقم الفاتورة</th>
-                            <th>العميل</th>
-                            <th>التاريخ</th>
-                            <th>المخزن المصدر</th>
-                            <th>الإجمالي</th>
-                            <th>الحالة</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for invoice in invoices %}
-                        <tr>
-                            <td class="fw-bold">#INV-{{ invoice.id }}</td>
-                            <td>{{ invoice.customer.name|default:"عميل نقدي" }}</td>
-                            <td>{{ invoice.created_at|date:"Y-m-d" }}</td>
-                            <td>{{ invoice.warehouse.name }}</td>
-                            <td class="text-success fw-bold">{{ invoice.total_amount }}</td>
-                            <td>
-                                {% if invoice.status == 'paid' %}
-                                <span class="badge bg-success text-white"><i class="fas fa-check-circle me-1"></i> مدفوعة</span>
-                                {% elif invoice.status == 'pending' %}
-                                <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i> قيد الانتظار</span>
-                                {% else %}
-                                <span class="badge bg-danger text-white"><i class="fas fa-times-circle me-1"></i> ملغاة</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="btn-group">
-                                    <a href="{% url 'sales:invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-info" title="عرض">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'sales:invoice_update' invoice.id %}" class="btn btn-sm btn-outline-warning" title="تعديل">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-sm btn-outline-secondary" title="تحميل PDF">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </a>
-                                    <a href="{% url 'sales:invoice_delete' invoice.id %}" class="btn btn-sm btn-outline-danger" title="حذف">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
-                <h5>لا توجد فواتير مبيعات</h5>
-                <p class="text-muted">ابدأ بإنشاء أول فاتورة مبيعات الآن.</p>
-                <a href="{% url 'sales:create' %}" class="btn btn-primary mt-2">إنشاء فاتورة</a>
-            </div>
-            {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>رقم الفاتورة</th>
+                        <th>العميل</th>
+                        <th>المخزن المصدر</th>
+                        <th>التاريخ</th>
+                        <th>الإجمالي</th>
+                        <th>الحالة</th>
+                        <th class="text-center" style="color:#dc2626"><i class="fas fa-file-pdf me-1"></i>PDF</th>
+                        <th class="text-center">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td><span class="inv-badge">#INV-{{ invoice.id|stringformat:"04d" }}</span></td>
+                        <td>
+                            {% if invoice.customer %}
+                                <a href="{% url 'sales:customer_detail' invoice.customer.id %}" class="text-decoration-none fw-semibold text-dark">
+                                    <i class="fas fa-user text-muted me-1" style="font-size:0.8rem"></i>
+                                    {{ invoice.customer.name }}
+                                </a>
+                            {% else %}
+                                <span class="text-muted"><i class="fas fa-user-tag me-1"></i>عميل نقدي</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="text-muted">{{ invoice.warehouse.name }}</span></td>
+                        <td><span class="text-muted" style="font-size:0.83rem">{{ invoice.created_at|date:"Y/m/d" }}</span></td>
+                        <td><span class="fw-bold text-dark">{{ invoice.total_amount }}</span></td>
+                        <td>
+                            {% if invoice.status == 'paid' %}<span class="status-paid"><i class="fas fa-check-circle me-1"></i>مدفوعة</span>
+                            {% elif invoice.status == 'pending' %}<span class="status-pending"><i class="fas fa-clock me-1"></i>قيد الانتظار</span>
+                            {% else %}<span class="status-cancelled"><i class="fas fa-times me-1"></i>ملغاة</span>{% endif %}
+                        </td>
+
+                        <!-- ── PROMINENT PDF BUTTON ───────────────────── -->
+                        <td class="text-center">
+                            <a href="{% url 'sales:invoice_pdf' invoice.id %}" 
+                               class="btn-pdf" 
+                               target="_blank" 
+                               title="تحميل الفاتورة PDF">
+                                <i class="fas fa-file-pdf"></i>
+                            </a>
+                        </td>
+
+                        <td>
+                            <div class="d-flex justify-content-center gap-1">
+                                <a href="{% url 'sales:invoice_detail' invoice.id %}" class="btn-act btn btn-outline-info" title="عرض">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'sales:invoice_update' invoice.id %}" class="btn-act btn btn-outline-warning" title="تعديل">
+                                    <i class="fas fa-pen"></i>
+                                </a>
+                                <a href="{% url 'sales:invoice_delete' invoice.id %}" class="btn-act btn btn-outline-danger" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <i class="fas fa-file-invoice-dollar d-block mb-3"></i>
+                                <h5 class="text-dark">لا توجد فواتير مبيعات</h5>
+                                <p class="text-muted mb-4">ابدأ بإنشاء أول فاتورة مبيعات الآن.</p>
+                                <a href="{% url 'sales:create' %}" class="btn btn-success rounded-3 px-4">
+                                    <i class="fas fa-plus me-2"></i>إنشاء فاتورة
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

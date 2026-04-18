@@ -3,13 +3,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.forms import inlineformset_factory
 from django.db import transaction
+from django.db.models import Q, Sum
+from django.core.paginator import Paginator
 from django.http import HttpResponse
 from .models import PurchaseOrder, PurchaseItem, Supplier
 from .forms import PurchaseOrderForm, PurchaseItemForm, SupplierForm
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from io import BytesIO
+from core.pdf_utils import generate_purchase_pdf
 
 @login_required
 def dashboard(request):
@@ -34,7 +33,44 @@ def dashboard(request):
 @login_required
 def supplier_list(request):
     suppliers = Supplier.objects.all()
-    return render(request, 'purchases/suppliers/list.html', {'suppliers': suppliers})
+
+    # بحث
+    q = request.GET.get('q', '').strip()
+    if q:
+        suppliers = suppliers.filter(
+            Q(name__icontains=q) |
+            Q(phone__icontains=q) |
+            Q(email__icontains=q) |
+            Q(address__icontains=q)
+        )
+
+    # فلترة بالحالة
+    status = request.GET.get('status', '')
+    if status == 'active':
+        suppliers = suppliers.filter(is_active=True)
+    elif status == 'inactive':
+        suppliers = suppliers.filter(is_active=False)
+
+    # ترتيب
+    sort = request.GET.get('sort', '-created_at')
+    if sort in ['name', '-name', 'created_at', '-created_at']:
+        suppliers = suppliers.order_by(sort)
+
+    # ترقيم الصفحات
+    paginator = Paginator(suppliers, 10)
+    page = request.GET.get('page')
+    suppliers = paginator.get_page(page)
+
+    context = {
+        'suppliers': suppliers,
+        'q': q,
+        'status': status,
+        'sort': sort,
+        'total_active': Supplier.objects.filter(is_active=True).count(),
+        'total_inactive': Supplier.objects.filter(is_active=False).count(),
+        'total_count': Supplier.objects.count(),
+    }
+    return render(request, 'purchases/suppliers/list.html', context)
 
 @login_required
 def supplier_create(request):
@@ -171,50 +207,11 @@ def purchase_delete(request, pk):
 @login_required
 def purchase_pdf(request, pk):
     order = get_object_or_404(PurchaseOrder, pk=pk)
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-
-    # Header
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(100, height - 50, f"Purchase Order: PO-{order.id}")
-    p.setFont("Helvetica", 12)
-    p.drawString(100, height - 70, f"Supplier: {order.supplier.name}")
-    p.drawString(100, height - 85, f"Date: {order.created_at.strftime('%Y-%m-%d')}")
-    p.drawString(100, height - 100, f"Status: {order.get_status_display()}")
-
-    # Table Header
-    p.line(100, height - 120, 500, height - 120)
-    p.drawString(100, height - 135, "Product")
-    p.drawString(300, height - 135, "Qty")
-    p.drawString(350, height - 135, "Price")
-    p.drawString(420, height - 135, "Total")
-    p.line(100, height - 140, 500, height - 140)
-
-    # Table Body
-    y = height - 155
-    for item in order.items.all():
-        if y < 50:
-            p.showPage()
-            y = height - 50
-        p.drawString(100, y, f"{item.product.name[:30]}")
-        p.drawString(300, y, f"{item.quantity}")
-        p.drawString(350, y, f"{item.unit_price}")
-        p.drawString(420, y, f"{item.total_price}")
-        y -= 20
-
-    # Footer
-    p.line(100, y - 10, 500, y - 10)
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(350, y - 25, "Grand Total:")
-    p.drawString(420, y - 25, f"{order.total_amount}")
-
-    p.showPage()
-    p.save()
-    
-    buffer.seek(0)
-    return HttpResponse(buffer, content_type='application/pdf', 
-                        headers={'Content-Disposition': f'attachment; filename="PurchaseOrder_{order.id}.pdf"'})
+    buffer = generate_purchase_pdf(order)
+    filename = f"PurchaseOrder_PO-{order.id:04d}.pdf"
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
 
 @login_required
 def reports(request):

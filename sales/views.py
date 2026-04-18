@@ -3,13 +3,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.forms import inlineformset_factory
 from django.db import transaction
+from django.db.models import Q, Sum
+from django.core.paginator import Paginator
 from django.http import HttpResponse
 from .models import SalesInvoice, SalesItem, Customer
 from .forms import SalesInvoiceForm, SalesItemForm, CustomerForm
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from io import BytesIO
+from core.pdf_utils import generate_invoice_pdf
 
 @login_required
 def dashboard(request):
@@ -34,7 +33,44 @@ def dashboard(request):
 @login_required
 def customer_list(request):
     customers = Customer.objects.all()
-    return render(request, 'sales/customers/list.html', {'customers': customers})
+
+    # بحث
+    q = request.GET.get('q', '').strip()
+    if q:
+        customers = customers.filter(
+            Q(name__icontains=q) |
+            Q(phone__icontains=q) |
+            Q(email__icontains=q) |
+            Q(address__icontains=q)
+        )
+
+    # فلترة بالحالة
+    status = request.GET.get('status', '')
+    if status == 'active':
+        customers = customers.filter(is_active=True)
+    elif status == 'inactive':
+        customers = customers.filter(is_active=False)
+
+    # ترتيب
+    sort = request.GET.get('sort', '-created_at')
+    if sort in ['name', '-name', 'created_at', '-created_at']:
+        customers = customers.order_by(sort)
+
+    # ترقيم الصفحات
+    paginator = Paginator(customers, 10)
+    page = request.GET.get('page')
+    customers = paginator.get_page(page)
+
+    context = {
+        'customers': customers,
+        'q': q,
+        'status': status,
+        'sort': sort,
+        'total_active': Customer.objects.filter(is_active=True).count(),
+        'total_inactive': Customer.objects.filter(is_active=False).count(),
+        'total_count': Customer.objects.count(),
+    }
+    return render(request, 'sales/customers/list.html', context)
 
 @login_required
 def customer_create(request):
@@ -172,47 +208,9 @@ def invoice_delete(request, pk):
 @login_required
 def invoice_pdf(request, pk):
     invoice = get_object_or_404(SalesInvoice, pk=pk)
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
+    buffer = generate_invoice_pdf(invoice)
+    filename = f"Invoice_INV-{invoice.id:04d}.pdf"
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
 
-    # Header
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(100, height - 50, f"Sales Invoice: INV-{invoice.id}")
-    p.setFont("Helvetica", 12)
-    p.drawString(100, height - 70, f"Customer: {invoice.customer.name if invoice.customer else 'Cash Customer'}")
-    p.drawString(100, height - 85, f"Date: {invoice.created_at.strftime('%Y-%m-%d')}")
-    p.drawString(100, height - 100, f"Status: {invoice.get_status_display()}")
-
-    # Table Header
-    p.line(100, height - 120, 500, height - 120)
-    p.drawString(100, height - 135, "Product")
-    p.drawString(300, height - 135, "Qty")
-    p.drawString(350, height - 135, "Price")
-    p.drawString(420, height - 135, "Total")
-    p.line(100, height - 140, 500, height - 140)
-
-    # Table Body
-    y = height - 155
-    for item in invoice.items.all():
-        if y < 50:
-            p.showPage()
-            y = height - 50
-        p.drawString(100, y, f"{item.product.name[:30]}")
-        p.drawString(300, y, f"{item.quantity}")
-        p.drawString(350, y, f"{item.unit_price}")
-        p.drawString(420, y, f"{item.total_price}")
-        y -= 20
-
-    # Footer
-    p.line(100, y - 10, 500, y - 10)
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(350, y - 25, "Grand Total:")
-    p.drawString(420, y - 25, f"{invoice.total_amount}")
-
-    p.showPage()
-    p.save()
-    
-    buffer.seek(0)
-    return HttpResponse(buffer, content_type='application/pdf', 
-                        headers={'Content-Disposition': f'attachment; filename="Invoice_{invoice.id}.pdf"'})
