@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.generic import ListView, CreateView, UpdateView, DetailView
 from django.urls import reverse_lazy
-from django.db.models import Q
+from django.db.models import Q, Count
 from .models import CustomUser, UserRole, ActivityLog
 from .forms import CustomUserCreationForm, CustomUserChangeForm, LoginForm
 from .mixins import AdminRequiredMixin, SuperAdminRequiredMixin
