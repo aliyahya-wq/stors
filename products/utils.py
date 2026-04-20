@@ -37,19 +37,19 @@ def import_products_from_excel(file_path):
                     continue
 
                 # الحصول على وحدة القياس
-                try:
-                    unit = Unit.objects.get(name=row['unit'])
-                except Unit.DoesNotExist:
+                try:  # محاولة مطابقة وحدة القياس
+                    unit = Unit.objects.get(name=row['unit'])  # البحث عن الوحدة بالاسم
+                except Unit.DoesNotExist:  # إذا كانت الوحدة غير معرفة مسبقاً في النظام
                     results['errors'].append(f"الصف {index + 2}: وحدة القياس غير موجودة - {row['unit']}")
                     continue
 
                 # إنشاء المنتج
-                product = Product(
+                product = Product(  # بناء كائن المنتج وتعيين القيم من أعمدة صف الإكسل
                     name=row['name'],
                     sku=row['sku'],
                     category=category,
                     unit=unit,
-                    description=row.get('description', ''),
+                    description=row.get('description', ''),  # استخدام .get لتفادي الأخطاء في حال غياب العمود
                     purchase_price=row.get('purchase_price', 0),
                     selling_price=row.get('selling_price', 0),
                     min_stock=row.get('min_stock', 0),
@@ -57,13 +57,13 @@ def import_products_from_excel(file_path):
                     is_active=row.get('is_active', True)
                 )
 
-                product.save()
-                results['success'] += 1
+                product.save()  # حفظ المنتج فعلياً في قاعدة البيانات
+                results['success'] += 1  # زيادة عداد النجاح
 
-            except Exception as e:
-                results['errors'].append(f"الصف {index + 2}: {str(e)}")
+            except Exception as e:  # التقاط أي خطأ غير متوقع أثناء معالجة صف معين
+                results['errors'].append(f"الصف {index + 2}: {str(e)}")  # تدوين الخطأ لمراجعته من قبل المستخدم
 
-        return results
+        return results  # إرجاع التقرير النهائي لعملية الاستيراد
 
     except Exception as e:
         return {

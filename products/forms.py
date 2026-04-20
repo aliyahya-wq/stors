@@ -3,10 +3,12 @@ from .models import *
 from inventory.models import Warehouse, InventoryItem, StockMovement, StockTransfer, StockAlert
 from .models import Unit
 
+{# نموذج التصنيفات: يستخدم لإنشاء وتعديل فئات المنتجات في النظام #}
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
         fields = ['name', 'parent', 'description', 'image', 'category_type', 'is_active']
+        # استخدام التنسيقات (Widgets) لضمان توافق الحقول مع تصميم واجهة المستخدم (Bootstrap)
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'أدخل اسم التصنيف'}),
             'parent': forms.Select(attrs={'class': 'form-control'}),
@@ -16,6 +18,7 @@ class CategoryForm(forms.ModelForm):
         }
 
 
+{# نموذج المنتجات: النموذج الأساسي لإضافة بيانات الأصناف المخزنة وتعديلها #}
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
@@ -24,6 +27,7 @@ class ProductForm(forms.ModelForm):
             'purchase_price', 'selling_price', 'min_stock', 'max_stock',
             'main_image', 'has_expiry', 'is_active'
         ]
+        # الربط بين حقول قاعدة البيانات وعناصر واجهة الإدخال مع إضافة فئات CSS المناسبة
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'sku': forms.TextInput(attrs={'class': 'form-control'}),
@@ -39,12 +43,14 @@ class ProductForm(forms.ModelForm):
         }
 
 
+{# نموذج معرض الصور: لإضافة صور إضافية لكل منتج لتوفير رؤية أشمل للصنف #}
 class ProductImageForm(forms.ModelForm):
     class Meta:
         model = ProductImage
         fields = ['image', 'caption', 'is_default']
 
 
+{# نموذج المستودعات: لتعريف وتحديث بيانات مواقع التخزين المختلفة #}
 class WarehouseForm(forms.ModelForm):
     class Meta:
         model = Warehouse
@@ -61,6 +67,7 @@ class WarehouseForm(forms.ModelForm):
         }
 
 
+{# نموذج تسوية المخزون: يستخدم في عمليات الجرد والتعديل اليدوي للكميات #}
 class InventoryAdjustmentForm(forms.ModelForm):
     class Meta:
         model = StockMovement
@@ -73,10 +80,12 @@ class InventoryAdjustmentForm(forms.ModelForm):
         }
 
 
+{# نموذج تحويل المخزون: للتعامل مع نقل الأصناف بين المستودعات بمان يضمن التوثيق الدقيق #}
 class StockTransferForm(forms.ModelForm):
     class Meta:
         model = StockTransfer
         fields = ['product', 'from_warehouse', 'to_warehouse', 'quantity', 'notes']
+        # توجيه المستخدم لاختيار المستودعات والكميات المطلوبة بشكل منظم
         widgets = {
             'product': forms.Select(attrs={'class': 'form-control'}),
             'from_warehouse': forms.Select(attrs={'class': 'form-control'}),
@@ -86,6 +95,7 @@ class StockTransferForm(forms.ModelForm):
         }
 
 
+{# نموذج الاستيراد الجماعي: نموذج بسيط لالتقاط ملفات الإكسل ومعالجتها #}
 class BulkImportForm(forms.Form):
     excel_file = forms.FileField(
         label='ملف Excel',
@@ -93,9 +103,7 @@ class BulkImportForm(forms.Form):
     )
 
 
-
-
-
+{# نموذج وحدات القياس: لتعريف كيفية قياس المنتجات (كجم، متر، إلخ) #}
 class UnitForm(forms.ModelForm):
     class Meta:
         model = Unit
@@ -119,6 +127,7 @@ class UnitForm(forms.ModelForm):
             }),
         }
 
+    # منطق التحقق (Validation Logic) لضمان جودة البيانات المدخلة في الوحدات
     def clean_conversion_factor(self):
         conversion_factor = self.cleaned_data.get('conversion_factor')
         if conversion_factor <= 0:

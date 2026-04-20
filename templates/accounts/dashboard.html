@@ -1,10 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{# صفحة لوحة التحكم الرئيسية للنظام، تعرض ملخصاً شاملاً لأهم المؤشرات والعمليات #}
+
 {% block title %}لوحة التحكم - نظام إدارة المستودعات{% endblock %}
 
 {% block extra_css %}
 <style>
+    /* تعريف ألوان مخصصة لاستخدامها في البطاقات (Stats Cards) */
     :root {
         --bs-primary-rgb: 59, 130, 246;
         --bs-success-rgb: 34, 197, 94;
@@ -15,18 +18,19 @@
     .dashboard-container { background-color: #f8fafc; min-height: 100vh; padding: 2rem; }
     .page-title { font-weight: 800; color: #1e293b; letter-spacing: -0.02em; }
     
-    /* Stats Cards */
+    /* تنسيق بطاقات الإحصائيات (Stat Cards) */
     .stat-card { border: none; border-radius: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; position: relative; }
     .stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 24px -8px rgba(0,0,0,0.15); }
     .stat-card-inner { padding: 1.5rem; position: relative; z-index: 1; }
     .stat-icon { position: absolute; right: -10px; bottom: -10px; font-size: 5rem; opacity: 0.1; transform: rotate(-15deg); }
     
+    /* تدرجات ألوان مختلفة لكل نوع من التقرير */
     .card-sales { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
     .card-purchases { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
     .card-products { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; }
     .card-alerts { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
 
-    /* Alert List Styling */
+    /* تنسيق قائمة التنبيهات */
     .alert-item { border-right: 4px solid transparent; transition: all 0.2s; border-radius: 8px; margin-bottom: 0.5rem; }
     .alert-item:hover { background: #fffbeb; }
     .alert-low_stock { border-right-color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
@@ -49,18 +53,20 @@
             <p class="text-muted mb-0">نظرة شاملة على مستودعاتك، مبيعاتك، والتنبيهات العاجلة.</p>
         </div>
         <div class="d-flex gap-2">
+            {# زر لتحديث الصفحة يدوياً وجلب أحدث البيانات من قاعدة البيانات #}
             <button class="btn btn-white border shadow-sm rounded-pill px-4" onclick="location.reload()">
                 <i class="fas fa-sync-alt me-2 text-primary"></i>تحديث البيانات
             </button>
         </div>
     </div>
 
-    <!-- Stats Grid -->
+    <!-- شبكة بطاقات الإحصائيات (Stats Grid) -->
     <div class="row g-4 mb-5">
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card card-sales shadow-sm">
                 <div class="stat-card-inner">
                     <div class="mb-3 opacity-75 fw-bold small">إجمالي المبيعات (المدفوعة)</div>
+                    {# عرض إجمالي المبيعات مع تنسيق للأرقام العشرية #}
                     <h2 class="fw-bold mb-0">{{ total_sales|floatformat:2 }} <span class="small font-weight-normal">ر.س</span></h2>
                     <i class="fas fa-chart-line stat-icon"></i>
                 </div>
@@ -96,12 +102,13 @@
     </div>
 
     <div class="row g-4 mb-5">
-        <!-- Alerts & Actions -->
+        <!-- أحدث التنبيهات وإجراءات العمل -->
         <div class="col-lg-8">
             <div class="card table-container shadow-sm h-100">
                 <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
                     <h5 class="fw-bold mb-0 text-dark"><i class="fas fa-bell text-warning me-2"></i>أحدث التنبيهات</h5>
                     <div class="d-flex gap-2">
+                        {# عرض توزيع أنواع التنبيهات النشطة #}
                         <span class="badge bg-warning text-dark">{{ low_stock_alerts }} نقص مخزون</span>
                         <span class="badge bg-danger">{{ expiry_alerts }} انتهاء صلاحية</span>
                     </div>
@@ -110,6 +117,7 @@
                     {% if recent_alerts %}
                         <div class="list-group list-group-flush">
                         {% for alert in recent_alerts %}
+                            {# تلوين حافة التنبيه بناءً على نوعه (نقص أو انتهاء صلاحية) #}
                             <div class="list-group-item alert-item alert-{{ alert.alert_type }} px-3 py-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="d-flex align-items-center gap-3">
@@ -128,6 +136,7 @@
                                         </div>
                                     </div>
                                     <div class="text-end">
+                                        {# عرض الوقت المنقضي منذ إنشاء التنبيه #}
                                         <div class="small text-muted mb-2">{{ alert.created_at|timesince }}</div>
                                         <a href="{% url 'inventory:inventory_detail' alert.product.id %}" class="btn btn-sm btn-outline-dark rounded-pill px-3">معالجة</a>
                                     </div>
@@ -139,6 +148,7 @@
                             <a href="{% url 'inventory:stock_alerts' %}" class="btn btn-link text-decoration-none small fw-bold">عرض جميع التنبيهات <i class="fas fa-chevron-left ms-1"></i></a>
                         </div>
                     {% else %}
+                        {# رسالة تظهر في حال عدم وجود أي تنبيهات حالية #}
                         <div class="text-center py-5">
                             <i class="fas fa-check-circle text-success fa-3x mb-3 opacity-25"></i>
                             <p class="text-muted">لا توجد تنبيهات نشطة حالياً. كل شيء يبدو جيداً!</p>
@@ -148,7 +158,7 @@
             </div>
         </div>
 
-        <!-- Entity Summary -->
+        <!-- ملخص الكيانات الأساسية للنظام -->
         <div class="col-lg-4">
             <div class="card table-container shadow-sm">
                 <div class="card-header bg-white py-3 px-4">
@@ -190,7 +200,7 @@
     </div>
 
     <div class="row g-4">
-        <!-- Recent Invoices -->
+        <!-- عرض أحدث فواتير المبيعات المسجلة -->
         <div class="col-xl-6">
             <div class="card table-container shadow-sm h-100">
                 <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
@@ -214,6 +224,7 @@
                                 <td>{{ inv.customer.name|default:"عميل نقدي" }}</td>
                                 <td class="fw-bold">{{ inv.total_amount }}</td>
                                 <td>
+                                    {# تمييز الحالة لونياً بناءً على ما إذا كانت مدفوعة أم لا #}
                                     {% if inv.status == 'paid' %}
                                         <span class="badge-status bg-success-subtle text-success border border-success-subtle">مدفوعة</span>
                                     {% else %}
@@ -230,7 +241,7 @@
             </div>
         </div>
 
-        <!-- Recent Purchases -->
+        <!-- عرض أحدث طلبات الشراء المسجلة -->
         <div class="col-xl-6">
             <div class="card table-container shadow-sm h-100">
                 <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">

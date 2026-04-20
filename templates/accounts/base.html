@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}نظام إدارة المستخدمين{% endblock %}</title>
 
-    <!-- Bootstrap 5 CSS -->
+    <!-- Bootstrap 5 CSS - إطار العمل الأساسي للتصميم Responsiveness -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
+    <!-- Font Awesome - مكتبة الأيقونات المستخدمة في النظام -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
+        /* تعريف المتغيرات اللونية الأساسية للنظام لسهولة التعديل اللاحق */
         :root {
             --primary-color: #3498db;
             --secondary-color: #2c3e50;
@@ -26,6 +27,7 @@
             background-color: var(--light-bg);
         }
 
+        /* تنسيق الشريط الجانبي (Sidebar) */
         .sidebar {
             background: linear-gradient(135deg, var(--secondary-color), #1a252f);
             color: white;
@@ -56,6 +58,7 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
+        /* تنسيق بطاقات الإحصائيات والمعلومات */
         .card {
             border: none;
             border-radius: 10px;
@@ -89,38 +92,23 @@
             border: none;
         }
 
-        .badge-super_admin {
-            background-color: #e74c3c;
-        }
-
-        .badge-admin {
-            background-color: #3498db;
-        }
-
-        .badge-inventory_manager {
-            background-color: #f39c12;
-        }
-
-        .badge-purchase_manager {
-            background-color: #9b59b6;
-        }
-
-        .badge-sales_manager {
-            background-color: #27ae60;
-        }
-
-        .badge-viewer {
-            background-color: #95a5a6;
-        }
+        /* ألوان الشارات بناءً على أدوار المستخدمين */
+        .badge-super_admin { background-color: #e74c3c; }
+        .badge-admin { background-color: #3498db; }
+        .badge-inventory_manager { background-color: #f39c12; }
+        .badge-purchase_manager { background-color: #9b59b6; }
+        .badge-sales_manager { background-color: #27ae60; }
+        .badge-viewer { background-color: #95a5a6; }
     </style>
 
     {% block extra_css %}{% endblock %}
 </head>
 <body>
 {% if user.is_authenticated %}
+    {# يتم عرض هذا المحتوى فقط للمستخدمين الذين سجلوا دخولهم بنجاح #}
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
+            <!-- Sidebar / الشريط الجانبي للتنقل -->
             <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <div class="text-center mb-4">
@@ -132,6 +120,7 @@
 
                     <ul class="nav flex-column">
                         <li class="nav-item">
+                            {# رابط لوحة التحكم العامة - يستخدم resolver_match لتمييز الرابط النشط #}
                             <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
                                href="{% url 'accounts:dashboard' %}">
                                 <i class="fas fa-tachometer-alt"></i>
@@ -139,7 +128,8 @@
                             </a>
                         </li>
 
-                        {% if user.role.name in 'super_admin,admin' %}
+                        {# إظهار خيارات الإدارة للمديرين فقط (نظام أو عام) #}
+                        {% if user.is_admin %}
                             <li class="nav-item">
                                 <a class="nav-link {% if 'user' in request.resolver_match.url_name %}active{% endif %}"
                                    href="{% url 'accounts:user_list' %}">
@@ -149,7 +139,7 @@
                             </li>
                         {% endif %}
 
-                        {% if user.role.name == 'super_admin' %}
+                        {% if user.is_admin %}
                             <li class="nav-item">
                                 <a class="nav-link {% if 'role' in request.resolver_match.url_name %}active{% endif %}"
                                    href="{% url 'accounts:role_list' %}">
@@ -178,9 +168,9 @@
                 </div>
             </nav>
 
-            <!-- Main content -->
+            <!-- Main content / المحتوى الرئيسي للصفحة -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <!-- Navbar -->
+                <!-- Navbar / شريط التنقل العلوي -->
                 <nav class="navbar navbar-expand-lg navbar-light bg-white mb-4">
                     <div class="container-fluid">
                         <button class="navbar-toggler d-md-none" type="button" data-bs-toggle="collapse"
@@ -192,6 +182,7 @@
                             <ul class="navbar-nav me-auto">
                                 <li class="nav-item">
                                     <span class="navbar-text">
+                                        {# الترحيب بالمستخدم الحالي باسمه #}
                                         مرحباً، {{ user.first_name }} {{ user.last_name }}
                                     </span>
                                 </li>
@@ -205,13 +196,9 @@
                                         الإعدادات
                                     </a>
                                     <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">الملف
-                                            الشخصي</a></li>
-                                        <li>
-                                            <hr class="dropdown-divider">
-                                        </li>
-                                        <li><a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">تسجيل
-                                            الخروج</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">الملف الشخصي</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">تسجيل الخروج</a></li>
                                     </ul>
                                 </li>
                             </ul>
@@ -219,19 +206,19 @@
                     </div>
                 </nav>
 
-                <!-- Messages -->
+                <!-- Messages / عرض رسائل التنبيه والنجاح من Django Messages Framework -->
                 {% if messages %}
                     <div class="messages-container">
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                                 {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                <button type="button" class="btn-close" data-bs-alert="dismiss"></button>
                             </div>
                         {% endfor %}
                     </div>
                 {% endif %}
 
-                <!-- Content -->
+                <!-- Content / المنطقة التي سيتم ملؤها من الصفحات الفرعية -->
                 <div class="content">
                     {% block content %}{% endblock %}
                 </div>
@@ -239,10 +226,11 @@
         </div>
     </div>
 {% else %}
+    {# عرض محتوى خاص بالضيف في حالة عدم تسجيل الدخول (مثل صفحة Login) #}
     {% block auth_content %}{% endblock %}
 {% endif %}
 
-<!-- JavaScript -->
+<!-- JavaScript libraries -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
