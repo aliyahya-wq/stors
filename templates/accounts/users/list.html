@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{# صفحة إدارة المستخدمين: تعرض قائمة شاملة بكافة حسابات النظام مع إمكانية البحث والفلترة #}
+
 {% block title %}إدارة المستخدمين - نظام الإدارة{% endblock %}
 
 {% block content %}
@@ -16,7 +18,7 @@
             </div>
         </div>
 
-        <!-- Filters -->
+        <!-- Filters / فلاتر البحث المتقدم -->
         <div class="card shadow-sm mb-4">
             <div class="card-body">
                 <form method="get" class="row g-3">
@@ -41,10 +43,8 @@
                         <label for="status" class="form-label">الحالة</label>
                         <select class="form-select" id="status" name="status">
                             <option value="">جميع الحالات</option>
-                            <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>نشط
-                            </option>
-                            <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>معطل
-                            </option>
+                            <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>نشط</option>
+                            <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>معطل</option>
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
@@ -56,7 +56,7 @@
             </div>
         </div>
 
-        <!-- Users Table -->
+        <!-- Users Table / جدول عرض بيانات المستخدمين -->
         <div class="card shadow">
             <div class="card-body">
                 <div class="table-responsive">
@@ -65,7 +65,7 @@
                         <tr>
                             <th>المستخدم</th>
                             <th>البريد الإلكتروني</th>
-                            <th>الدور</th>
+                            <th>الدور الوظيفي</th>
                             <th>القسم</th>
                             <th>الحالة</th>
                             <th>تاريخ الإنشاء</th>
@@ -76,6 +76,7 @@
                         {% for user in users %}
                             <tr>
                                 <td>
+                                    {# عرض الاسم مع صورة رمزية تعبيرية #}
                                     <div class="d-flex align-items-center">
                                         <div class="avatar bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center"
                                              style="width: 40px; height: 40px;">
@@ -88,10 +89,12 @@
                                 </td>
                                 <td>{{ user.email }}</td>
                                 <td>
+                                    {# عرض دور المستخدم في شارة ملونة بناءً على مسمى الدور #}
                                     <span class="badge badge-{{ user.role.name }}">{{ user.role.get_name_display }}</span>
                                 </td>
                                 <td>{{ user.department }}</td>
                                 <td>
+                                    {# تمييز الحالة (نشط/معطل) بالألوان #}
                                     {% if user.is_active %}
                                         <span class="badge bg-success">نشط</span>
                                     {% else %}
@@ -101,6 +104,7 @@
                                 <td>{{ user.created_at|date:"Y-m-d" }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
+                                        {# أزرار التعديل والعرض #}
                                         <a href="{% url 'accounts:user_update' user.pk %}"
                                            class="btn btn-outline-primary">
                                             <i class="fas fa-edit"></i>
@@ -108,6 +112,7 @@
                                         <a href="{% url 'accounts:user_detail' user.pk %}" class="btn btn-outline-info">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        {# منع المستخدم من حذف نفسه لضمان استقرار النظام #}
                                         {% if user != request.user %}
                                             <button type="button" class="btn btn-outline-danger"
                                                     data-bs-toggle="modal" data-bs-target="#deleteModal{{ user.pk }}">
@@ -116,7 +121,7 @@
                                         {% endif %}
                                     </div>
 
-                                    <!-- Delete Modal -->
+                                    <!-- Delete Modal / نافذة تأكيد الحذف لضمان عدم الحذف بالخطأ -->
                                     <div class="modal fade" id="deleteModal{{ user.pk }}" tabindex="-1">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
@@ -128,17 +133,17 @@
                                                 <div class="modal-body">
                                                     <p>هل أنت متأكد من رغبتك في حذف المستخدم
                                                         <strong>{{ user.first_name }} {{ user.last_name }}</strong>؟</p>
-                                                    <p class="text-danger">هذا الإجراء لا يمكن التراجع عنه.</p>
+                                                    <p class="text-danger small">تحذير: هذا الإجراء سيؤدي لإزالة كافة بيانات تسجيل الدخول لهذا المستخدم.</p>
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary"
-                                                            data-bs-dismiss="modal">إلغاء
+                                                            data-bs-modal="dismiss">إلغاء
                                                     </button>
                                                     <form method="post"
                                                           action="{% url 'accounts:user_delete' user.pk %}"
                                                           style="display: inline;">
                                                         {% csrf_token %}
-                                                        <button type="submit" class="btn btn-danger">حذف</button>
+                                                        <button type="submit" class="btn btn-danger">حذف نهائي</button>
                                                     </form>
                                                 </div>
                                             </div>
@@ -147,10 +152,11 @@
                                 </td>
                             </tr>
                         {% empty %}
+                            {# حالة عدم وجود بيانات #}
                             <tr>
                                 <td colspan="7" class="text-center py-4">
                                     <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                                    <p class="text-muted">لا توجد مستخدمين</p>
+                                    <p class="text-muted">لا توجد مستخدمين مطابقين للبحث</p>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -158,7 +164,7 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
+                <!-- Pagination / أزرار التنقل بين الصفحات لضمان كفاءة العرض عند كثرة المستخدمين -->
                 {% if is_paginated %}
                     <nav aria-label="Page navigation" class="mt-4">
                         <ul class="pagination justify-content-center">
@@ -199,28 +205,12 @@
             font-size: 14px;
         }
 
-        .badge-super_admin {
-            background-color: #e74c3c;
-        }
-
-        .badge-admin {
-            background-color: #3498db;
-        }
-
-        .badge-inventory_manager {
-            background-color: #f39c12;
-        }
-
-        .badge-purchase_manager {
-            background-color: #9b59b6;
-        }
-
-        .badge-sales_manager {
-            background-color: #27ae60;
-        }
-
-        .badge-viewer {
-            background-color: #95a5a6;
-        }
+        /* تنسيق ألوان الشارات بناءً على المسميات الوظيفية الصادرة من قاعدة البيانات */
+        .badge-super_admin { background-color: #e74c3c; }
+        .badge-admin { background-color: #3498db; }
+        .badge-inventory_manager { background-color: #f39c12; }
+        .badge-purchase_manager { background-color: #9b59b6; }
+        .badge-sales_manager { background-color: #27ae60; }
+        .badge-viewer { background-color: #95a5a6; }
     </style>
 {% endblock %}

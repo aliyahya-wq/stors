@@ -1,150 +1,285 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}لوحة التحكم - نظام الإدارة{% endblock %}
+{# صفحة لوحة التحكم الرئيسية للنظام، تعرض ملخصاً شاملاً لأهم المؤشرات والعمليات #}
+
+{% block title %}لوحة التحكم - نظام إدارة المستودعات{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* تعريف ألوان مخصصة لاستخدامها في البطاقات (Stats Cards) */
+    :root {
+        --bs-primary-rgb: 59, 130, 246;
+        --bs-success-rgb: 34, 197, 94;
+        --bs-danger-rgb: 239, 68, 68;
+        --bs-warning-rgb: 245, 158, 11;
+    }
+    
+    .dashboard-container { background-color: #f8fafc; min-height: 100vh; padding: 2rem; }
+    .page-title { font-weight: 800; color: #1e293b; letter-spacing: -0.02em; }
+    
+    /* تنسيق بطاقات الإحصائيات (Stat Cards) */
+    .stat-card { border: none; border-radius: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; position: relative; }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 24px -8px rgba(0,0,0,0.15); }
+    .stat-card-inner { padding: 1.5rem; position: relative; z-index: 1; }
+    .stat-icon { position: absolute; right: -10px; bottom: -10px; font-size: 5rem; opacity: 0.1; transform: rotate(-15deg); }
+    
+    /* تدرجات ألوان مختلفة لكل نوع من التقرير */
+    .card-sales { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+    .card-purchases { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+    .card-products { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; }
+    .card-alerts { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
+
+    /* تنسيق قائمة التنبيهات */
+    .alert-item { border-right: 4px solid transparent; transition: all 0.2s; border-radius: 8px; margin-bottom: 0.5rem; }
+    .alert-item:hover { background: #fffbeb; }
+    .alert-low_stock { border-right-color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
+    .alert-expiry { border-right-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+    .alert-excess { border-right-color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
+
+    .table-container { border-radius: 16px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .table thead th { background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; border: none; padding: 1rem; }
+    .table tbody td { padding: 1rem; border-bottom: 1px solid #f1f5f9; color: #1e293b; font-size: 0.875rem; }
+    
+    .badge-status { padding: 0.4em 0.8em; border-radius: 10px; font-weight: 600; font-size: 0.75rem; }
+</style>
+{% endblock %}
 
 {% block content %}
-    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h2">
-            <i class="fas fa-users-cog me-2"></i>لوحة تحكم المستخدمين والنشاطات
-        </h1>
+<div class="dashboard-container">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="page-title h2 mb-1">لوحة تحكم العمليات</h1>
+            <p class="text-muted mb-0">نظرة شاملة على مستودعاتك، مبيعاتك، والتنبيهات العاجلة.</p>
+        </div>
+        <div class="d-flex gap-2">
+            {# زر لتحديث الصفحة يدوياً وجلب أحدث البيانات من قاعدة البيانات #}
+            <button class="btn btn-white border shadow-sm rounded-pill px-4" onclick="location.reload()">
+                <i class="fas fa-sync-alt me-2 text-primary"></i>تحديث البيانات
+            </button>
+        </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card shadow h-100 py-2" style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); color: white;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col me-2">
-                            <div class="text-xs font-weight-bold text-uppercase mb-1" style="opacity: 0.8;">إجمالي المستخدمين</div>
-                            <div class="h5 mb-0 font-weight-bold">{{ total_users }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-users fa-2x opacity-50"></i>
-                        </div>
-                    </div>
+    <!-- شبكة بطاقات الإحصائيات (Stats Grid) -->
+    <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card card-sales shadow-sm">
+                <div class="stat-card-inner">
+                    <div class="mb-3 opacity-75 fw-bold small">إجمالي المبيعات (المدفوعة)</div>
+                    {# عرض إجمالي المبيعات مع تنسيق للأرقام العشرية #}
+                    <h2 class="fw-bold mb-0">{{ total_sales|floatformat:2 }} <span class="small font-weight-normal">ر.س</span></h2>
+                    <i class="fas fa-chart-line stat-icon"></i>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card shadow h-100 py-2" style="background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%); color: white;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col me-2">
-                            <div class="text-xs font-weight-bold text-uppercase mb-1" style="opacity: 0.8;">المستخدمين النشطين</div>
-                            <div class="h5 mb-0 font-weight-bold">{{ active_users }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-user-check fa-2x opacity-50"></i>
-                        </div>
-                    </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card card-purchases shadow-sm">
+                <div class="stat-card-inner">
+                    <div class="mb-3 opacity-75 fw-bold small">إجمالي المشتريات (المستلمة)</div>
+                    <h2 class="fw-bold mb-0">{{ total_purchases|floatformat:2 }} <span class="small font-weight-normal">ر.س</span></h2>
+                    <i class="fas fa-shopping-cart stat-icon"></i>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-6 col-md-12 mb-4">
-            <div class="card shadow h-100 py-2 border-left-info">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-info text-uppercase mb-2">توزيع الأدوار</div>
-                    <div class="row align-items-center">
-                        {% for role in role_distribution %}
-                        <div class="col-auto mb-2">
-                            <span class="badge bg-light text-dark shadow-sm p-2">
-                                {{ role.get_name_display }}: <strong>{{ role.user_count }}</strong>
-                            </span>
-                        </div>
-                        {% endfor %}
-                    </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card card-products shadow-sm">
+                <div class="stat-card-inner">
+                    <div class="mb-3 opacity-75 fw-bold small">المنتجات النشطة</div>
+                    <h2 class="fw-bold mb-0">{{ product_count }} <span class="small font-weight-normal">منتج</span></h2>
+                    <i class="fas fa-boxes stat-icon"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card card-alerts shadow-sm">
+                <div class="stat-card-inner">
+                    <div class="mb-3 opacity-75 fw-bold small">تنبيهات المخزون العاجلة</div>
+                    <h2 class="fw-bold mb-0">{{ total_alerts }} <span class="small font-weight-normal">تنبيه</span></h2>
+                    <i class="fas fa-exclamation-triangle stat-icon"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <!-- سجل النشاطات العام -->
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-history me-2 text-primary"></i>سجل كافة أنشطة النظام
-                    </h5>
-                    <a href="{% url 'accounts:activity_logs' %}" class="btn btn-sm btn-outline-primary">عرض السجل الكامل</a>
+    <div class="row g-4 mb-5">
+        <!-- أحدث التنبيهات وإجراءات العمل -->
+        <div class="col-lg-8">
+            <div class="card table-container shadow-sm h-100">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fas fa-bell text-warning me-2"></i>أحدث التنبيهات</h5>
+                    <div class="d-flex gap-2">
+                        {# عرض توزيع أنواع التنبيهات النشطة #}
+                        <span class="badge bg-warning text-dark">{{ low_stock_alerts }} نقص مخزون</span>
+                        <span class="badge bg-danger">{{ expiry_alerts }} انتهاء صلاحية</span>
+                    </div>
                 </div>
-                <div class="card-body">
-                    {% if all_activities %}
-                        <div class="table-responsive">
-                            <table class="table table-hover table-sm">
-                                <thead class="table-light">
-                                <tr>
-                                    <th>المستخدم</th>
-                                    <th>الإجراء</th>
-                                    <th>التفاصيل</th>
-                                    <th>الوقت</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {% for activity in all_activities %}
-                                    <tr>
-                                        <td class="fw-bold">{{ activity.user.get_full_name|default:activity.user.email }}</td>
-                                        <td>
-                                            <span class="badge {% if 'حذف' in activity.action %}bg-danger{% elif 'إنشاء' in activity.action %}bg-success{% else %}bg-primary{% endif %}">
-                                                {{ activity.action }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <small class="text-muted">
-                                                {{ activity.model }}: 
-                                                {% for key, value in activity.details.items %}
-                                                    {{ value }}{% if not forloop.last %}, {% endif %}
-                                                {% endfor %}
-                                            </small>
-                                        </td>
-                                        <td><small>{{ activity.timestamp|date:"m-d H:i" }}</small></td>
-                                    </tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <p class="text-center text-muted my-4">لا توجد أنشطة مسجلة</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- آخر المستخدمين المسجلين -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow">
-                <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-user-plus me-2 text-success"></i>آخر المسجلين
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if recent_users %}
+                <div class="card-body px-4">
+                    {% if recent_alerts %}
                         <div class="list-group list-group-flush">
-                            {% for u in recent_users %}
-                            <div class="list-group-item px-0">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ u.get_full_name|default:u.email }}</h6>
-                                    <small class="text-muted">{{ u.date_joined|date:"Y-m-d" }}</small>
+                        {% for alert in recent_alerts %}
+                            {# تلوين حافة التنبيه بناءً على نوعه (نقص أو انتهاء صلاحية) #}
+                            <div class="list-group-item alert-item alert-{{ alert.alert_type }} px-3 py-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="flex-shrink-0">
+                                            {% if alert.alert_type == 'low_stock' %}
+                                                <i class="fas fa-layer-group text-warning fa-lg"></i>
+                                            {% elif alert.alert_type == 'expiry' %}
+                                                <i class="fas fa-calendar-times text-danger fa-lg"></i>
+                                            {% else %}
+                                                <i class="fas fa-info-circle text-primary fa-lg"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1 fw-bold">{{ alert.product.name }}</h6>
+                                            <p class="mb-0 small text-muted">{{ alert.message }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        {# عرض الوقت المنقضي منذ إنشاء التنبيه #}
+                                        <div class="small text-muted mb-2">{{ alert.created_at|timesince }}</div>
+                                        <a href="{% url 'inventory:inventory_detail' alert.product.id %}" class="btn btn-sm btn-outline-dark rounded-pill px-3">معالجة</a>
+                                    </div>
                                 </div>
-                                <p class="mb-1 small">الدور: <span class="badge bg-secondary">{{ u.role.get_name_display }}</span></p>
-                                <small class="text-muted">{{ u.email }}</small>
                             </div>
-                            {% endfor %}
+                        {% endfor %}
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'inventory:stock_alerts' %}" class="btn btn-link text-decoration-none small fw-bold">عرض جميع التنبيهات <i class="fas fa-chevron-left ms-1"></i></a>
                         </div>
                     {% else %}
-                        <p class="text-center text-muted">لا يوجد مستخدمون جدد</p>
+                        {# رسالة تظهر في حال عدم وجود أي تنبيهات حالية #}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle text-success fa-3x mb-3 opacity-25"></i>
+                            <p class="text-muted">لا توجد تنبيهات نشطة حالياً. كل شيء يبدو جيداً!</p>
+                        </div>
                     {% endif %}
-                    <div class="mt-3">
-                        <a href="{% url 'accounts:user_list' %}" class="btn btn-primary btn-sm w-100">إدارة كافة المستخدمين</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ملخص الكيانات الأساسية للنظام -->
+        <div class="col-lg-4">
+            <div class="card table-container shadow-sm">
+                <div class="card-header bg-white py-3 px-4">
+                    <h5 class="fw-bold mb-0 text-dark">ملخص الكيانات</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="p-2 bg-light rounded-3 text-primary"><i class="fas fa-users"></i></div>
+                                <span class="fw-bold">العملاء</span>
+                            </div>
+                            <span class="badge bg-primary rounded-pill px-3">{{ customer_count }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="p-2 bg-light rounded-3 text-success"><i class="fas fa-truck"></i></div>
+                                <span class="fw-bold">الموردين</span>
+                            </div>
+                            <span class="badge bg-success rounded-pill px-3">{{ supplier_count }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="p-2 bg-light rounded-3 text-info"><i class="fas fa-warehouse"></i></div>
+                                <span class="fw-bold">المخازن</span>
+                            </div>
+                            <span class="badge bg-info rounded-pill px-3">{{ warehouse_count }}</span>
+                        </div>
                     </div>
                 </div>
+            </div>
+            
+            <div class="card table-container shadow-sm mt-4 text-center py-4 px-3" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white;">
+                <h6 class="fw-bold mb-3">هل تحتاج لمساعدة؟</h6>
+                <p class="small opacity-75 mb-3">يمكنك الوصول لمركز المساعدة أو التقارير التفصيلية من القائمة الجانبية.</p>
+                <a href="{% url 'reports:dashboard' %}" class="btn btn-white btn-sm rounded-pill w-100 fw-bold">اكتشف التقارير</a>
             </div>
         </div>
     </div>
 
+    <div class="row g-4">
+        <!-- عرض أحدث فواتير المبيعات المسجلة -->
+        <div class="col-xl-6">
+            <div class="card table-container shadow-sm h-100">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fas fa-file-invoice-dollar text-success me-2"></i>آخر فواتير المبيعات</h5>
+                    <a href="{% url 'sales:invoice_list' %}" class="btn btn-sm btn-outline-primary rounded-pill">الكل</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>العميل</th>
+                                <th>الإجمالي</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inv in recent_invoices %}
+                            <tr>
+                                <td class="fw-bold">INV-{{ inv.id }}</td>
+                                <td>{{ inv.customer.name|default:"عميل نقدي" }}</td>
+                                <td class="fw-bold">{{ inv.total_amount }}</td>
+                                <td>
+                                    {# تمييز الحالة لونياً بناءً على ما إذا كانت مدفوعة أم لا #}
+                                    {% if inv.status == 'paid' %}
+                                        <span class="badge-status bg-success-subtle text-success border border-success-subtle">مدفوعة</span>
+                                    {% else %}
+                                        <span class="badge-status bg-warning-subtle text-warning border border-warning-subtle text-dark">قيد الانتظار</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center py-4">لا توجد فواتير مؤخراً</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- عرض أحدث طلبات الشراء المسجلة -->
+        <div class="col-xl-6">
+            <div class="card table-container shadow-sm h-100">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fas fa-shopping-cart text-danger me-2"></i>آخر طلبات الشراء</h5>
+                    <a href="{% url 'purchases:purchase_list' %}" class="btn btn-sm btn-outline-primary rounded-pill">الكل</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>المورد</th>
+                                <th>الإجمالي</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for po in recent_purchases %}
+                            <tr>
+                                <td class="fw-bold">PO-{{ po.id }}</td>
+                                <td>{{ po.supplier.name }}</td>
+                                <td class="fw-bold">{{ po.total_amount }}</td>
+                                <td>
+                                    {% if po.status == 'completed' %}
+                                        <span class="badge-status bg-success-subtle text-success border border-success-subtle">مكتمل</span>
+                                    {% else %}
+                                        <span class="badge-status bg-warning-subtle text-warning border border-warning-subtle text-dark">قيد الانتظار</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center py-4">لا توجد طلبات شراء مؤخراً</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

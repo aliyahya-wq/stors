@@ -1,129 +1,283 @@
 {% extends 'accounts/base.html' %}
 {% load static %}
 
-{% block title %}تسجيل الدخول - نظام الإدارة{% endblock %}
+{# صفحة تسجيل الدخول: الواجهة الأولى للمستخدم للوصول إلى النظام #}
+
+{% block title %}تسجيل الدخول - نظام إدارة المخازن{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+    /* تصميم داكن وعصري لصفحة الدخول باستخدام CSS Variables لتسهيل الثيمات */
+    :root {
+        --bg-color: #0f172a;
+        --card-bg: #1e293b;
+        --primary-color: #3b82f6;
+        --primary-hover: #2563eb;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border-color: #334155;
+        --input-bg: #0f172a;
+    }
+
+    body {
+        font-family: 'Cairo', sans-serif;
+        background-color: var(--bg-color);
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        overflow: hidden;
+    }
+
+    .login-wrapper {
+        width: 100%;
+        max-width: 350px;
+        padding: 10px;
+    }
+
+    /* تنسيق بطاقة تسجيل الدخول (Solid Card) لتعطي طابع القوة والموثوقية */
+    .login-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .logo-container {
+        width: 48px;
+        height: 48px;
+        background-color: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 12px;
+    }
+
+    .logo-container i {
+        font-size: 24px;
+        color: var(--primary-color);
+    }
+
+    .login-header h2 {
+        color: var(--text-main);
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .login-header p {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-group label {
+        display: block;
+        color: var(--text-main);
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    /* أيقونات داخل حقول الإدخال لتحسين التجربة البصرية للنموذج */
+    .input-wrapper i {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        pointer-events: none;
+    }
+
+    .form-control {
+        width: 100%;
+        background-color: var(--input-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px 48px 12px 16px;
+        color: var(--text-main);
+        font-family: 'Cairo', sans-serif;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-control::placeholder {
+        color: #475569;
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 32px;
+    }
+
+    .form-check-input {
+        width: 16px;
+        height: 16px;
+        background-color: var(--input-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .form-check-label {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        cursor: pointer;
+    }
+
+    .btn-login {
+        width: 100%;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .btn-login:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .btn-login:active {
+        transform: translateY(0);
+    }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 32px;
+    }
+
+    .auth-footer a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: color 0.2s ease;
+    }
+
+    .auth-footer a:hover {
+        color: var(--primary-hover);
+        text-decoration: underline;
+    }
+
+    .alert {
+        background-color: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        font-size: 0.875rem;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
 
 {% block auth_content %}
-    <div class="container">
-        <div class="row justify-content-center min-vh-100 align-items-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card shadow-lg border-0">
-                    <div class="card-body p-5">
-                        <!-- Header -->
-                        <div class="text-center mb-4">
-                            <div class="mb-3">
-                                <i class="fas fa-users-cog fa-3x text-primary"></i>
-                            </div>
-                            <h3 class="card-title">تسجيل الدخول</h3>
-                            <p class="text-muted">مرحباً بعودتك، يرجى تسجيل الدخول إلى حسابك</p>
-                        </div>
-
-                        <!-- Login Form -->
-                        <form method="post" novalidate>
-                            {% csrf_token %}
-
-                            {% if form.non_field_errors %}
-                                <div class="alert alert-danger">
-                                    {% for error in form.non_field_errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-
-                            <!-- Email Field -->
-                            <div class="mb-3">
-                                <label for="{{ form.email.id_for_label }}" class="form-label">
-                                    <i class="fas fa-envelope me-2"></i>البريد الإلكتروني
-                                </label>
-                                {{ form.email }}
-                                {% if form.email.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.email.errors %}
-                                            {{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </div>
-
-                            <!-- Password Field -->
-                            <div class="mb-3">
-                                <label for="{{ form.password.id_for_label }}" class="form-label">
-                                    <i class="fas fa-lock me-2"></i>كلمة المرور
-                                </label>
-                                {{ form.password }}
-                                {% if form.password.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.password.errors %}
-                                            {{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </div>
-
-                            <!-- Remember Me -->
-                            <div class="mb-3 form-check">
-                                {{ form.remember_me }}
-                                <label class="form-check-label" for="{{ form.remember_me.id_for_label }}">
-                                    تذكرني
-                                </label>
-                            </div>
-
-                            <!-- Submit Button -->
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-sign-in-alt me-2"></i>تسجيل الدخول
-                                </button>
-                            </div>
-                        </form>
-
-                        <!-- Links -->
-                        <div class="text-center mt-4">
-                            <a href="{% url 'accounts:password_reset' %}" class="text-decoration-none">
-                                <i class="fas fa-key me-1"></i>نسيت كلمة المرور؟
-                            </a>
-                        </div>
-
-                        <!-- Footer -->
-                        <div class="text-center mt-4">
-                            <p class="text-muted">
-                                نظام إدارة المستخدمين والصلاحيات &copy; {% now "Y" %}
-                            </p>
-                        </div>
-                    </div>
-                </div>
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="logo-container">
+                <i class="fas fa-warehouse"></i>
             </div>
+            <h2>تسجيل الدخول</h2>
+            <p>نظام إدارة المخازن والمستودعات</p>
+        </div>
+
+        {# نموذج إرسال البيانات باستخدام POST للحماية، وتم إيقاف التحقق الأساسي للمتصفح novalidate للاعتماد على Django #}
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {# عرض الأخطاء العامة التي لا ترتبط بحقل محدد (مثل خطأ كلمة المرور غير الصحيحة) #}
+            {% if form.non_field_errors %}
+                {% for error in form.non_field_errors %}
+                    <div class="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {{ error }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="form-group">
+                <label for="{{ form.email.id_for_label }}">البريد الإلكتروني</label>
+                <div class="input-wrapper">
+                    <input type="email" name="email" id="{{ form.email.id_for_label }}" 
+                           class="form-control" placeholder="example@domain.com" required>
+                    <i class="fas fa-envelope"></i>
+                </div>
+                {# عرض أخطاء التحقق الخاصة بحقل البريد الإلكتروني #}
+                {% if form.email.errors %}
+                    <div class="text-danger small mt-1">{% for error in form.email.errors %}{{ error }}{% endfor %}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}">كلمة المرور</label>
+                <div class="input-wrapper">
+                    <input type="password" name="password" id="{{ form.password.id_for_label }}" 
+                           class="form-control" placeholder="••••••••" required>
+                    <i class="fas fa-lock"></i>
+                </div>
+                {% if form.password.errors %}
+                    <div class="text-danger small mt-1">{% for error in form.password.errors %}{{ error }}{% endfor %}</div>
+                {% endif %}
+            </div>
+
+            {# خيار تذكر الدخول لزيادة مدة الجلسة للمستخدم #}
+            <div class="form-check">
+                <input type="checkbox" name="remember_me" id="{{ form.remember_me.id_for_label }}" class="form-check-input">
+                <label for="{{ form.remember_me.id_for_label }}" class="form-check-label">تذكرني</label>
+            </div>
+
+            <button type="submit" class="btn-login">
+                <span>تسجيل الدخول</span>
+                <i class="fas fa-sign-in-alt"></i>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <a href="{% url 'accounts:password_reset' %}">نسيت كلمة المرور؟</a>
         </div>
     </div>
-
-    <style>
-        .min-vh-100 {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .card {
-            border-radius: 15px;
-            border: none;
-        }
-
-        .form-control {
-            padding: 12px 15px;
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
-            transition: all 0.3s ease;
-        }
-
-        .form-control:focus {
-            border-color: #3498db;
-            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 600;
-        }
-    </style>
+</div>
 {% endblock %}

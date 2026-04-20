@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - نظام المخازن{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card { border-radius: 14px; border: none; }
+    .form-card .card-header { border-radius: 14px 14px 0 0 !important; padding: 20px 28px; }
+    .form-label { font-size: 0.83rem; font-weight: 700; color: #374151; margin-bottom: 5px; }
+    .form-control, .form-select { border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 0.9rem; padding: 9px 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-control:focus, .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .form-control.is-invalid { border-color: #ef4444; }
+    .invalid-feedback { font-size: 0.78rem; }
+    .required-star { color: #ef4444; }
+    .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 16px; }
+    .form-check-label { font-size: 0.9rem; font-weight: 500; }
+    .form-switch .form-check-input { width: 42px; height: 22px; }
+    textarea.form-control { resize: vertical; min-height: 90px; }
+    .btn-save { padding: 10px 32px; border-radius: 9px; font-weight: 600; font-size: 0.9rem; }
+    .btn-cancel { padding: 10px 24px; border-radius: 9px; font-size: 0.9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb" style="font-size:0.83rem">
+                    <li class="breadcrumb-item"><a href="{% url 'purchases:supplier_list' %}" class="text-decoration-none">الموردين</a></li>
+                    <li class="breadcrumb-item active">{{ title }}</li>
+                </ol>
+            </nav>
+
+            <div class="card form-card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex align-items-center gap-3">
+                    <div style="width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center">
+                        <i class="fas {% if form.instance.pk %}fa-pen{% else %}fa-truck-loading{% endif %} fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">{{ title }}</h5>
+                        <div class="opacity-75" style="font-size:0.78rem">
+                            {% if form.instance.pk %}تعديل بيانات المورد #{{ form.instance.pk }}{% else %}إضافة مورد إلى النظام{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="section-title mb-3">معلومات المورد الأساسية</div>
+
+                        <!-- Name -->
+                        <div class="mb-3">
+                            <label class="form-label">اسم المورد <span class="required-star">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0" style="border-radius:8px 0 0 8px;border:1.5px solid #e2e8f0;border-right:none">
+                                    <i class="fas fa-building text-muted"></i>
+                                </span>
+                                {{ form.name }}
+                            </div>
+                            {% if form.name.errors %}
+                            <div class="text-danger mt-1" style="font-size:0.78rem"><i class="fas fa-exclamation-circle me-1"></i>{{ form.name.errors|join:" " }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <!-- Phone -->
+                            <div class="col-md-6">
+                                <label class="form-label">رقم الهاتف <span class="required-star">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0" style="border-radius:8px 0 0 8px;border:1.5px solid #e2e8f0;border-right:none">
+                                        <i class="fas fa-phone text-muted"></i>
+                                    </span>
+                                    {{ form.phone }}
+                                </div>
+                                {% if form.phone.errors %}
+                                <div class="text-danger mt-1" style="font-size:0.78rem">{{ form.phone.errors|join:" " }}</div>
+                                {% endif %}
+                            </div>
+                            <!-- Email -->
+                            <div class="col-md-6">
+                                <label class="form-label">البريد الإلكتروني</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0" style="border-radius:8px 0 0 8px;border:1.5px solid #e2e8f0;border-right:none">
+                                        <i class="fas fa-envelope text-muted"></i>
+                                    </span>
+                                    {{ form.email }}
+                                </div>
+                                {% if form.email.errors %}
+                                <div class="text-danger mt-1" style="font-size:0.78rem">{{ form.email.errors|join:" " }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Address -->
+                        <div class="mb-4">
+                            <label class="form-label">العنوان</label>
+                            <div class="input-group align-items-start">
+                                <span class="input-group-text bg-white border-end-0 pt-2" style="border-radius:8px 0 0 8px;border:1.5px solid #e2e8f0;border-right:none">
+                                    <i class="fas fa-map-marker-alt text-muted"></i>
+                                </span>
+                                {{ form.address }}
+                            </div>
+                            {% if form.address.errors %}
+                            <div class="text-danger mt-1" style="font-size:0.78rem">{{ form.address.errors|join:" " }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="section-title mb-3">الإعدادات</div>
+
+                        <!-- Status Toggle -->
+                        <div class="p-3 rounded-3 mb-4" style="background:#f8fafc;border:1.5px solid #e2e8f0">
+                            <div class="form-check form-switch d-flex align-items-center gap-3 mb-0">
+                                {{ form.is_active }}
+                                <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">
+                                    مورد نشط
+                                    <div class="text-muted fw-normal" style="font-size:0.78rem;margin-top:2px">المورد النشط يظهر في قوائم الاختيار عند إنشاء طلبات الشراء</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'purchases:supplier_list' %}" class="btn btn-outline-secondary btn-cancel">
+                                <i class="fas fa-times me-1"></i>إلغاء
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-save shadow-sm">
+                                <i class="fas fa-save me-2"></i>
+                                {% if form.instance.pk %}حفظ التعديلات{% else %}إضافة المورد{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Remove border-end-0 workaround - make inputs borderless on the left side
+    document.querySelectorAll('.input-group .form-control, .input-group textarea').forEach(el => {
+        el.style.borderRadius = '0 8px 8px 0';
+        el.style.borderRight = '1.5px solid #e2e8f0';
+        el.style.borderTop = '1.5px solid #e2e8f0';
+        el.style.borderBottom = '1.5px solid #e2e8f0';
+        el.style.borderLeft = 'none';
+    });
+</script>
+{% endblock %}

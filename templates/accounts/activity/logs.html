@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{# صفحة سجل الأنشطة: تستخدم لمراقبة كافة العمليات التي تتم في النظام من قبل المستخدمين وتتبع التغييرات #}
+
 {% block title %}سجل الأنشطة - نظام الإدارة{% endblock %}
 
 {% block content %}
@@ -10,6 +12,7 @@
                 <i class="fas fa-history me-2"></i>سجل الأنشطة
             </h1>
             <div class="btn-toolbar mb-2 mb-md-0">
+                {# أزرار لتصدير البيانات إلى ملفات خارجية للتقارير الورقية أو الأرشفة #}
                 <button class="btn btn-outline-primary me-2" onclick="exportToExcel()">
                     <i class="fas fa-file-excel me-2"></i>تصدير Excel
                 </button>
@@ -19,7 +22,7 @@
             </div>
         </div>
 
-        <!-- Filters -->
+        <!-- Filters / فلاتر البحث لسهولة الوصول لمعلومات محددة -->
         <div class="card shadow-sm mb-4">
             <div class="card-body">
                 <form method="get" class="row g-3">
@@ -28,6 +31,7 @@
                         <select class="form-select" id="user" name="user">
                             <option value="">جميع المستخدمين</option>
                             {% for user in users %}
+                                {# استخدام id|stringformat:"i" للمقارنة الصحيحة مع القيم القادمة من الرابط #}
                                 <option value="{{ user.id }}"
                                         {% if request.GET.user == user.id|stringformat:"i" %}selected{% endif %}>
                                     {{ user.first_name }} {{ user.last_name }}
@@ -59,7 +63,7 @@
             </div>
         </div>
 
-        <!-- Activities Table -->
+        <!-- Activities Table / جدول عرض الأنشطة -->
         <div class="card shadow">
             <div class="card-body">
                 <div class="table-responsive">
@@ -80,6 +84,7 @@
                         {% for activity in activities %}
                             <tr>
                                 <td>
+                                    {# عرض صورة رمزية (Avatar) تعتمد على الحروف الأولى من اسم المستخدم #}
                                     <div class="d-flex align-items-center">
                                         <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center"
                                              style="width: 32px; height: 32px; font-size: 12px;">
@@ -93,6 +98,7 @@
                                     </div>
                                 </td>
                                 <td>
+                                {# تمييز لون الشارة (Badge) بناءً على نوع العملية (إضافة، تعديل، حذف) #}
                                 <span class="badge
                                     {% if 'إنشاء' in activity.action %}bg-success
                                     {% elif 'تحديث' in activity.action %}bg-primary
@@ -106,6 +112,7 @@
                                 <td>{{ activity.model }}</td>
                                 <td>{{ activity.object_id }}</td>
                                 <td>
+                                    {# زر لفتح نافذة منبثقة (Modal) تعرض تفاصيل العملية بتنسيق JSON #}
                                     <button type="button" class="btn btn-sm btn-outline-info"
                                             data-bs-toggle="modal" data-bs-target="#detailsModal{{ activity.id }}">
                                         <i class="fas fa-eye"></i>
@@ -123,7 +130,7 @@
                                 </td>
                             </tr>
 
-                            <!-- Details Modal -->
+                            <!-- Details Modal / النافذة المنبثقة لعرض التفاصيل التقنية للعملية -->
                             <div class="modal fade" id="detailsModal{{ activity.id }}" tabindex="-1">
                                 <div class="modal-dialog modal-lg">
                                     <div class="modal-content">
@@ -132,6 +139,7 @@
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
                                         <div class="modal-body">
+                                            {# عرض البيانات بصيغة pprint لتكون سهلة القراءة #}
                                             <pre><code>{{ activity.details|pprint }}</code></pre>
                                         </div>
                                         <div class="modal-footer">
@@ -143,6 +151,7 @@
                                 </div>
                             </div>
                         {% empty %}
+                            {# حالة عرض الجدول عند عدم وجود أي سجلات مطابقة للبحث أو الفلترة #}
                             <tr>
                                 <td colspan="8" class="text-center py-4">
                                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
@@ -154,12 +163,13 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
+                <!-- Pagination / أزرار التنقل بين الصفحات لضمان سرعة تحميل الصفحة عند كثرة البيانات -->
                 {% if is_paginated %}
                     <nav aria-label="Page navigation" class="mt-4">
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
+                                    {# تمرير كافة متغيرات البحث (request.GET) لضمان بقاء الفلاتر نشطة عند التنقل بين الصفحات #}
                                     <a class="page-link" href="?page=
                                             {{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">السابق</a>
                                 </li>
@@ -190,8 +200,8 @@
     </div>
 
     <script>
+        {# وظيفة برمجية بسيطة لتحويل محتوى الجدول لملف Excel #}
         function exportToExcel() {
-            // Simple Excel export implementation
             let table = document.getElementById('activitiesTable');
             let html = table.outerHTML;
             let url = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(html);
@@ -205,7 +215,6 @@
 
         function exportToPDF() {
             alert('سيتم تطوير وظيفة تصدير PDF في المستقبل');
-            // You can integrate with libraries like jsPDF or make a server-side PDF generation
         }
     </script>
 

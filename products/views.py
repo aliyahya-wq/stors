@@ -18,36 +18,40 @@ from purchases.models import PurchaseOrder, Supplier
 
 
 @login_required
-
 def dashboard(request):
-    # إحصائيات المخزون
-    total_products = Product.objects.count()
-    total_categories = Category.objects.count()
-    total_warehouses = Warehouse.objects.count()
-    low_stock_alerts = StockAlert.objects.filter(is_resolved=False, alert_type='low_stock').count()
+    """
+    لوحة تحكم المخزون: تجمع كافة البيانات الحيوية للنظام في مكان واحد لتسهيل اتخاذ القرار.
+    تشمل الإحصائيات العامة، التنبيهات، وحركات المخزون الأخيرة.
+    """
+    # إحصائيات المخزون الأساسية
+    total_products = Product.objects.count()  # حساب إجمالي عدد المنتجات المسجلة في النظام
+    total_categories = Category.objects.count()  # حساب عدد تصنيفات المنتجات
+    total_warehouses = Warehouse.objects.count()  # حساب إجمالي عدد مواقع التخزين
+    # جلب عدد التنبيهات غير المحلولة والخاصة بنقص المخزون
+    low_stock_alerts = StockAlert.objects.filter(is_resolved=False, alert_type='low_stock').count()  # تصفية التنبيهات النشطة فقط
 
-    # إحصائيات المبيعات والمشتريات والشركاء
-    total_sales = SalesInvoice.objects.aggregate(t=Sum('total_amount'))['t'] or 0
-    total_purchases = PurchaseOrder.objects.aggregate(t=Sum('total_amount'))['t'] or 0
-    total_customers = Customer.objects.count()
-    total_suppliers = Supplier.objects.count()
+    # إحصائيات مالية مجمعة من موديولات المبيعات والمشتريات
+    total_sales = SalesInvoice.objects.aggregate(t=Sum('total_amount'))['t'] or 0  # تجميع مبالغ الفواتير، مع معالجة حالة القيمة الفارغة
+    total_purchases = PurchaseOrder.objects.aggregate(t=Sum('total_amount'))['t'] or 0  # تجميع إجمالي المشتريات لتقدير التدفق المالي الخارج
+    total_customers = Customer.objects.count()  # عد قاعدة بيانات العملاء
+    total_suppliers = Supplier.objects.count()  # عد قاعدة بيانات الموردين
 
-    # المنتجات منخفضة المخزون
+    # تحديد المنتجات التي وصلت للحد الأدنى من المخزون لإبلاغ المسؤول
     low_stock_products = []
-    for product in Product.objects.all():
-        total_stock = product.get_total_stock()
-        if total_stock <= product.min_stock:
-            low_stock_products.append({
+    for product in Product.objects.all():  # التكرار عبر قائمة المنتجات لفحص كل صنف على حدة
+        total_stock = product.get_total_stock()  # استدعاء دالة حساب الكمية المتاحة في كل المخازن
+        if total_stock <= product.min_stock:  # المقارنة بين الكمية الحالية والحد الأدنى المسجل
+            low_stock_products.append({  # إضافة المنتج لقائمة التحذير في حال نقص الكمية
                 'product': product,
                 'current_stock': total_stock,
                 'min_stock': product.min_stock
             })
 
-    # حركات المخزون الحديثة
-    recent_movements = StockMovement.objects.select_related('product', 'warehouse').order_by('-created_at')[:10]
+    # جلب آخر 10 حركات مخزنية (صادر/وارد) لمراقبة النشاط اللحظي
+    recent_movements = StockMovement.objects.select_related('product', 'warehouse').order_by('-created_at')[:10]  # استخدام select_related لتحسين سرعة الاستعلام
     
-    # قائمة المخازن للرسوم البيانية أو التقارير
-    warehouses = Warehouse.objects.all()
+    # قائمة المستودعات لعرض توزيع المخزون
+    warehouses = Warehouse.objects.all()  # جلب كافة المستودعات لعرضها في الرسوم البيانية أو الجداول
 
     context = {
         'total_products': total_products,
@@ -58,7 +62,7 @@ def dashboard(request):
         'total_purchases': total_purchases,
         'total_customers': total_customers,
         'total_suppliers': total_suppliers,
-        'low_stock_products': low_stock_products[:5],
+        'low_stock_products': low_stock_products[:5], # عرض أول 5 منتجات فقط في لوحة التحكم
         'recent_movements': recent_movements,
         'warehouses': warehouses,
     }
@@ -66,32 +70,39 @@ def dashboard(request):
 
 
 @login_required
-
 def category_list(request):
-    categories = Category.objects.filter(parent__isnull=True).prefetch_related('products')
+    """
+    عرض قائمة التصنيفات الرئيسية التي ليس لها تصنيف أب (الطبقة العليا).
+    مع جلب المنتجات المرتبطة بها دفعة واحدة لتحسين الأداء.
+    """
+    categories = Category.objects.filter(parent__isnull=True).prefetch_related('products')  # جلب التصنيفات الجذرية فقط مع منتجاتها لتحسين الأداء
     return render(request, 'products/categories/list.html', {'categories': categories})
 
 
 @login_required
-
 def category_create(request):
-    if request.method == 'POST':
-        form = CategoryForm(request.POST, request.FILES)
-        if form.is_valid():
-            category = form.save()
-            messages.success(request, 'تم إنشاء التصنيف بنجاح')
-            return redirect('category_list')
+    """
+    إنشاء تصنيف جديد: يسمح للمسؤول بإضافة فئات جديدة لترتيب المنتجات.
+    """
+    if request.method == 'POST':  # التحقق مما إذا كان الطلب لإرسال بيانات النموذج
+        form = CategoryForm(request.POST, request.FILES)  # تعبئة النموذج بالبيانات المرسلة والملفات
+        if form.is_valid():  # التأكد من مطابقة البيانات للشروط البرمجية
+            category = form.save()  # حفظ التصنيف في قاعدة البيانات
+            messages.success(request, 'تم إنشاء التصنيف بنجاح')  # إرسال رسالة نجاح للمستخدم
+            return redirect('category_list')  # التوجه لصفحة القائمة
     else:
         form = CategoryForm()
     return render(request, 'products/categories/create.html', {'form': form})
 
 
 @login_required
-
 def category_detail(request, pk):
-    category = get_object_or_404(Category, pk=pk)
-    products = category.products.all()
-    subcategories = Category.objects.filter(parent=category)
+    """
+    عرض تفاصيل تصنيف معين مع قائمة منتجاته وتصنيفاته الفرعية.
+    """
+    category = get_object_or_404(Category, pk=pk)  # محاولة جلب التصنيف أو إرجاع خطأ 404 إذا لم يوجد
+    products = category.products.all()  # جلب العلاقة العكسية للمنتجات المرتبطة
+    subcategories = Category.objects.filter(parent=category)  # البحث عن أي تصنيفات تعتبر هذا التصنيف "أب" لها
 
     context = {
         'category': category,
@@ -102,49 +113,54 @@ def category_detail(request, pk):
 
 
 @login_required
-
 def product_list(request):
-    products = Product.objects.select_related('category', 'unit').prefetch_related('inventory_items')
+    """
+    عرض قائمة شاملة لكافة المنتجات في النظام مع إمكانية البحث والفلترة المتقدمة.
+    """
+    # استخدام select_related و prefetch_related لتقليل عدد الاستعلامات لقاعدة البيانات (Optimization)
+    products = Product.objects.select_related('category', 'unit').prefetch_related('inventory_items')  # جلب البيانات المرتبطة دفعة واحدة لتجنب مشكلة N+1
 
-    # البحث
-    search_query = request.GET.get('search', '')
-    if search_query:
-        products = products.filter(
-            Q(name__icontains=search_query) |
-            Q(sku__icontains=search_query) |
-            Q(barcode__icontains=search_query) |
-            Q(description__icontains=search_query)
+    # معالجة طلب البحث النصي (الاسم، الكود، الباركود)
+    search_query = request.GET.get('search', '')  # استخراج كلمة البحث من الرابط (URL)
+    if search_query:  # تنفيذ الفلترة في حال وجود كلمة بحث
+        products = products.filter(  # استخدام منطق OR للبحث في حقول متعددة
+            Q(name__icontains=search_query) |  # البحث في الاسم
+            Q(sku__icontains=search_query) |   # البحث في رمز المنتج
+            Q(barcode__icontains=search_query) | # البحث في الباركود
+            Q(description__icontains=search_query) # البحث في الوصف
         )
 
-    # الفلترة
-    category_filter = request.GET.get('category', '')
-    if category_filter:
+    # فلترة النتائج حسب التصنيف المحدد
+    category_filter = request.GET.get('category', '')  # جلب معرف التصنيف المطلوب الفلترة به
+    if category_filter:  # تطبيق الفلترة إذا تم اختيار تصنيف معين
         products = products.filter(category_id=category_filter)
 
-    warehouse_filter = request.GET.get('warehouse', '')
-    if warehouse_filter:
+    # فلترة المنتجات المتوفرة في مستودع معين
+    warehouse_filter = request.GET.get('warehouse', '')  # جلب معرف المستودع
+    if warehouse_filter:  # تصفية المنتجات الموجودة في هذا المستودع تحديداً عبر علاقة InventoryItem
         products = products.filter(inventory_items__warehouse_id=warehouse_filter)
 
-    stock_status = request.GET.get('stock_status', '')
-    if stock_status:
+    # فلترة المنتجات بناءً على حالة المخزون (طبيعي، منخفض، مرتفع)
+    stock_status = request.GET.get('stock_status', '')  # جلب الحالة المطلوبة (منخفض/طبيعي)
+    if stock_status:  # منطق برمجي مخصص لأن الحالة تحسب ديناميكياً وليست حقلاً في قاعدة البيانات
         product_ids = []
-        for product in products:
-            if product.get_stock_status() == stock_status:
-                product_ids.append(product.id)
-        products = products.filter(id__in=product_ids)
+        for product in products:  # المرور على النتائج الحالية
+            if product.get_stock_status() == stock_status:  # استدعاء دالة النموذج لفحص الحالة
+                product_ids.append(product.id)  # تجميع معرفات المنتجات المطابقة
+        products = products.filter(id__in=product_ids)  # إعادة تصفية الاستعلام الأصلي باستخدام المعرفات المجمعة
 
-    # التصنيف
-    sort_by = request.GET.get('sort', 'name')
-    if sort_by in ['name', 'sku', 'selling_price', 'created_at']:
-        products = products.order_by(sort_by)
+    # ترتيب نتائج العرض حسب اختيار المستخدم
+    sort_by = request.GET.get('sort', 'name')  # جلب حقل الترتيب أو الاعتماد على 'الاسم' كافتراضي
+    if sort_by in ['name', 'sku', 'selling_price', 'created_at']:  # التحقق من أن الحقل مسموح بالترتيب به أمنياً
+        products = products.order_by(sort_by)  # تطبيق الترتيب على الاستعلام
 
-    # الترقيم
-    paginator = Paginator(products, 25)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # تقسيم النتائج إلى صفحات (Pagination) لعرض 25 منتجاً في كل صفحة
+    paginator = Paginator(products, 25)  # إعداد كائن التقسيم
+    page_number = request.GET.get('page')  # جلب رقم الصفحة الحالية
+    page_obj = paginator.get_page(page_number)  # استخراج بيانات الصفحة المحددة فقط
 
-    categories = Category.objects.all()
-    warehouses = Warehouse.objects.all()
+    categories = Category.objects.all()  # جلب القائمة الكاملة للتصنيفات لاستخدامها في واجهة الفلترة
+    warehouses = Warehouse.objects.all()  # جلب القائمة الكاملة للمستودعات لواجهة الفلترة
 
     context = {
         'page_obj': page_obj,
@@ -162,29 +178,36 @@ def product_list(request):
 
 
 @login_required
-
 def product_create(request):
-    if request.method == 'POST':
-        form = ProductForm(request.POST, request.FILES)
-        if form.is_valid():
-            product = form.save()
-            messages.success(request, 'تم إنشاء المنتج بنجاح')
-            return redirect('product_detail', pk=product.pk)
+    """
+    إنشاء منتج جديد: يتعامل مع عرض النموذج (GET) ومعالجة البيانات المرسلة (POST).
+    يتضمن ميزة توليد كود SKU تلقائي للمنتجات الجديدة لتبسيط الإدخال.
+    """
+    if request.method == 'POST':  # في حالة إرسال بيانات المنتج الجديد
+        form = ProductForm(request.POST, request.FILES)  # استقبال البيانات والملفات (الصور)
+        if form.is_valid():  # التحقق من صحة المدخلات
+            product = form.save()  # حفظ المنتج والحصول على الكائن المحفوظ
+            messages.success(request, 'تم إنشاء المنتج بنجاح')  # إشعار المستخدم
+            return redirect('product_detail', pk=product.pk)  # إعادة التوجيه لصفحة تفاصيل المنتج المنشأ حديثاً
     else:
-        # توليد SKU تلقائي
-        last_product = Product.objects.order_by('-id').first()
-        next_sku = f"PROD{last_product.id + 1:06d}" if last_product else "PROD000001"
-        form = ProductForm(initial={'sku': next_sku})
+        # توليد كود SKU تلقائي متسلسل (مثال: PROD000005) لتسهيل تعريف المنتجات
+        last_product = Product.objects.order_by('-id').first()  # جلب آخر منتج تم إضافته للحصول على معرفه
+        next_sku = f"PROD{last_product.id + 1:06d}" if last_product else "PROD000001"  # توليد الرقم التسلسلي القادم بتنسيق ثابت
+        form = ProductForm(initial={'sku': next_sku})  # عرض النموذج مع وضع الكود المولد كقيمة افتراضية
 
     return render(request, 'products/products/create.html', {'form': form})
 
 
 @login_required
-
 def product_detail(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    inventory_items = product.inventory_items.select_related('warehouse')
-    movements = StockMovement.objects.filter(product=product).order_by('-created_at')[:20]
+    """
+    عرض الملف التفصيلي للمنتج: يشمل المواصفات، توزيع المخزون في المستودعات، وسجل الحركات.
+    """
+    product = get_object_or_404(Product, pk=pk)  # جلب بيانات المنتج الأساسية
+    # جلب كميات المنتج في كافة المستودعات (InventoryItems)
+    inventory_items = product.inventory_items.select_related('warehouse')  # جلب سجلات المخزون وتفاصيل المستودع المرتبط
+    # جلب آخر 20 حركة مخزنية مرتبطة بهذا المنتج فقط لمراجعة تاريخه
+    movements = StockMovement.objects.filter(product=product).order_by('-created_at')[:20]  # تصفية الحركات حسب المنتج والترتيب الزمني
 
     context = {
         'product': product,
@@ -195,15 +218,17 @@ def product_detail(request, pk):
 
 
 @login_required
-
 def product_update(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if request.method == 'POST':
-        form = ProductForm(request.POST, request.FILES, instance=product)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'تم تحديث المنتج بنجاح')
-            return redirect('product_detail', pk=product.pk)
+    """
+    تعديل منتج: يسمح بتحديث أي من بيانات المنتج الأساسية، الأسعار، أو إعدادات المخزون للمنتجات الموجودة مسبقاً.
+    """
+    product = get_object_or_404(Product, pk=pk)  # العثور على المنتج المطلوب تعديله
+    if request.method == 'POST':  # في حالة إرسال التعديلات
+        form = ProductForm(request.POST, request.FILES, instance=product)  # تمرير 'instance' ليقوم النظام بالتحديث بدلاً من الإنشاء
+        if form.is_valid():  # التحقق من صحة البيانات المعدلة
+            form.save()  # حفظ التغييرات
+            messages.success(request, 'تم تحديث بيانات المنتج بنجاح')  # إشعار بالنجاح
+            return redirect('product_detail', pk=product.pk)  # العودة لعرض المنتج
     else:
         form = ProductForm(instance=product)
 
@@ -211,19 +236,24 @@ def product_update(request, pk):
 
 
 @login_required
-
 def warehouse_list(request):
+    """
+    قائمة المستودعات: عرض لكافة مواقع التخزين المسجلة في النظام مع بيانات المديرين المسؤولين عنها.
+    """
     warehouses = Warehouse.objects.select_related('manager').prefetch_related('inventory_items')
     return render(request, 'products/warehouses/list.html', {'warehouses': warehouses})
 
 
 @login_required
-
 def warehouse_detail(request, pk):
+    """
+    عرض تفاصيل مستودع معين: يتضمن قائمة المنتجات المخزنة والكميات المتوفرة.
+    """
     warehouse = get_object_or_404(Warehouse, pk=pk)
+    # جلب كافة المنتجات الموجودة حالياً داخل هذا المستودع
     inventory_items = warehouse.inventory_items.select_related('product').order_by('product__name')
 
-    # إحصائيات المخزون
+    # حساب إحصائيات سريعة للمستودع (عدد الأصناف، إجمالي الكمية، الأصناف التي قاربت على النفاد)
     total_products = inventory_items.count()
     total_quantity = inventory_items.aggregate(total=Sum('quantity'))['total'] or 0
     low_stock_items = [item for item in inventory_items if item.quantity <= item.product.min_stock]
@@ -239,24 +269,28 @@ def warehouse_detail(request, pk):
 
 
 @login_required
-
 def stock_movements(request):
+    """
+    عرض سجل شامل لكافة حركات المخزون في النظام (وارد، صادر، تحويل، تسوية).
+    """
     movements = StockMovement.objects.select_related('product', 'warehouse', 'created_by').order_by('-created_at')
 
-    # الفلترة
+    # الفلترة حسب نوع الحركة (مثل: بيع، شراء، جرد)
     movement_type = request.GET.get('type', '')
     if movement_type:
         movements = movements.filter(movement_type=movement_type)
 
+    # الفلترة لمتابعة حركات منتج محدد
     product_filter = request.GET.get('product', '')
     if product_filter:
         movements = movements.filter(product_id=product_filter)
 
+    # الفلترة لمتابعة حركات مستودع محدد
     warehouse_filter = request.GET.get('warehouse', '')
     if warehouse_filter:
         movements = movements.filter(warehouse_id=warehouse_filter)
 
-    # الترقيم
+    # ترقيم السجلات (Pagination) لعرض 50 حركة في الصفحة لمتابعة العمليات بكفاءة
     paginator = Paginator(movements, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -278,24 +312,29 @@ def stock_movements(request):
 
 
 @login_required
-
 def stock_adjustment(request):
+    """
+    تسوية المخزون: تستخدم لتصحيح كميات المنتجات يدوياً في حال وجود فروقات بين المخزون الفعلي ومخزون النظام (مثال: بعد الجرد).
+    """
     if request.method == 'POST':
         form = InventoryAdjustmentForm(request.POST)
         if form.is_valid():
             adjustment = form.save(commit=False)
-            adjustment.movement_type = 'adjustment'
+            adjustment.movement_type = 'adjustment' # وسم الحركة كتسوية يدوية
             adjustment.created_by = request.user
 
-            # الحصول على المخزون الحالي
+            # الحصول على سجل المخزون الحالي في المستودع المحدد أو إنشاؤه إذا لم يوجد
             inventory_item, created = InventoryItem.objects.get_or_create(
                 product=adjustment.product,
                 warehouse=adjustment.warehouse,
                 defaults={'quantity': 0}
             )
 
+            # توثيق الكمية قبل وبعد التسوية لأغراض التدقيق
             adjustment.quantity_before = inventory_item.quantity
             adjustment.quantity_after = adjustment.quantity
+            
+            # تحديث الكمية الفعلية في المستودع لتطابق قيمة التسوية الجديدة
             inventory_item.quantity = adjustment.quantity
             inventory_item.save()
 
@@ -309,28 +348,31 @@ def stock_adjustment(request):
 
 
 @login_required
-
 def stock_transfer(request):
+    """
+    تحويل المخزون: ميزة تتيح نقل كميات محددة من منتج معين بين مستودعين مختلفين.
+    تضمن العملية الخصم من المستودع المصدر والإضافة للمستودع الوجهة مع توثيق الحركتين.
+    """
     if request.method == 'POST':
         form = StockTransferForm(request.POST)
         if form.is_valid():
             transfer = form.save(commit=False)
             transfer.created_by = request.user
 
-            # التحقق من توفر المخزون في المخزن المصدر
+            # فحص توفر الكمية المطلوبة في المستودع المصدر قبل إتمام التحويل
             from_inventory = InventoryItem.objects.filter(
                 product=transfer.product,
                 warehouse=transfer.from_warehouse
             ).first()
 
             if not from_inventory or from_inventory.quantity < transfer.quantity:
-                messages.error(request, 'لا يوجد مخزون كافي في المخزن المصدر')
+                messages.error(request, 'عذراً، لا يوجد مخزون كافي في المستودع المصدر لإتمام التحويل')
             else:
-                # خصم من المخزن المصدر
+                # المرحلة 1: خصم الكمية من المستودع المصدر
                 from_inventory.quantity -= transfer.quantity
                 from_inventory.save()
 
-                # إضافة إلى المخزن الهدف
+                # المرحلة 2: إضافة الكمية للمستودع الوجهة (أو إنشاء سجل مخزون جديد له)
                 to_inventory, created = InventoryItem.objects.get_or_create(
                     product=transfer.product,
                     warehouse=transfer.to_warehouse,
@@ -339,7 +381,7 @@ def stock_transfer(request):
                 to_inventory.quantity += transfer.quantity
                 to_inventory.save()
 
-                # تسجيل الحركة
+                # المرحلة 3: تسجيل حركتين منفصلتين (صادر من أ، وارد إلى ب) لتتبع دقيق للمخزون
                 StockMovement.objects.create(
                     product=transfer.product,
                     warehouse=transfer.from_warehouse,
@@ -365,7 +407,7 @@ def stock_transfer(request):
                 )
 
                 transfer.save()
-                messages.success(request, 'تم تحويل المخزون بنجاح')
+                messages.success(request, 'تمت عملية تحويل المخزون بنجاح')
                 return redirect('stock_transfers')
     else:
         form = StockTransferForm()
@@ -374,15 +416,19 @@ def stock_transfer(request):
 
 
 @login_required
-
 def stock_alerts(request):
+    """
+    تنبيهات المخزون: عرض قائمة بكافة التنبيهات النشطة (مثل نقص المخزون أو اقتراب انتهاء الصلاحية).
+    """
     alerts = StockAlert.objects.select_related('product', 'warehouse').filter(is_resolved=False).order_by('-created_at')
     return render(request, 'products/inventory/stock_alerts.html', {'alerts': alerts})
 
 
 @login_required
-
 def barcode_generator(request):
+    """
+    مولد الباركود: واجهة تسمح باختيار منتج وتوليد ملصق باركود خاص به للطباعة.
+    """
     products = Product.objects.all()
     return render(request, 'products/barcode/generator.html', {'products': products})
 
@@ -394,8 +440,11 @@ def barcode_scanner(request):
 
 
 @login_required
-
 def search_by_barcode(request):
+    """
+    البحث السريع بالباركود: تستخدم عادة مع أجهزة ماسح الباركود (Barcode Scanner) 
+    لجلب بيانات المنتج بسرعة عبر طلب AJAX وإرجاع النتائج بصيغة JSON.
+    """
     barcode = request.GET.get('barcode', '')
     if barcode:
         try:
@@ -412,20 +461,19 @@ def search_by_barcode(request):
                 }
             })
         except Product.DoesNotExist:
-            return JsonResponse({'success': False, 'message': 'المنتج غير موجود'})
+            return JsonResponse({'success': False, 'message': 'المنتج المطلوب غير مسجل في النظام'})
 
-    return JsonResponse({'success': False, 'message': 'لم يتم إدخال باركود'})
+    return JsonResponse({'success': False, 'message': 'لم يتم تزويد النظام بباركود للبحث'})
 
 
 @login_required
-
 def product_search(request):
     """
-    بحث متقدم في المنتجات
+    محرك البحث المتقدم: يسمح بالفلترة الدقيقة حسب السعر، الحالة، المستودع، والتصنيف.
     """
     products = Product.objects.select_related('category', 'unit').prefetch_related('inventory_items')
 
-    # البحث النصي
+    # البحث النصي الشامل
     search_query = request.GET.get('q', '')
     if search_query:
         products = products.filter(
@@ -435,15 +483,17 @@ def product_search(request):
             Q(description__icontains=search_query)
         )
 
-    # الفلترة
+    # فلترة حسب التصنيف
     category_filter = request.GET.get('category', '')
     if category_filter:
         products = products.filter(category_id=category_filter)
 
+    # فلترة حسب مكان التخزين
     warehouse_filter = request.GET.get('warehouse', '')
     if warehouse_filter:
         products = products.filter(inventory_items__warehouse_id=warehouse_filter)
 
+    # فلترة مخصصة لحالات المخزون الخاصة (منفد، منخفض، إلخ)
     stock_status = request.GET.get('stock_status', '')
     if stock_status:
         product_ids = []
@@ -458,7 +508,7 @@ def product_search(request):
                 product_ids.append(product.id)
         products = products.filter(id__in=product_ids)
 
-    # نطاق السعر
+    # فلترة نطاق السعر (من - إلى)
     min_price = request.GET.get('min_price', '')
     max_price = request.GET.get('max_price', '')
     if min_price:
@@ -466,19 +516,19 @@ def product_search(request):
     if max_price:
         products = products.filter(selling_price__lte=max_price)
 
-    # حالة المنتج
+    # فلترة المنتجات النشطة أو المعطلة
     is_active = request.GET.get('is_active', '')
     if is_active == 'true':
         products = products.filter(is_active=True)
     elif is_active == 'false':
         products = products.filter(is_active=False)
 
-    # الترتيب
+    # التحكم في ترتيب عرض النتائج
     sort_by = request.GET.get('sort', 'name')
     if sort_by in ['name', 'sku', 'selling_price', '-selling_price', 'created_at', '-created_at']:
         products = products.order_by(sort_by)
 
-    # الترقيم
+    #Pagination
     paginator = Paginator(products, 12)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -496,23 +546,23 @@ def product_search(request):
 
 
 @login_required
-
 def bulk_import(request):
     """
-    الاستيراد الجماعي للمنتجات
+    الاستيراد الجماعي: يسمح بإدخال كميات كبيرة من المنتجات عبر ملف Excel.
+    تمر العملية بمرحلتين: المعاينة (Preview) ثم التأكيد النهائي.
     """
     if request.method == 'POST':
         form = BulkImportForm(request.POST, request.FILES)
         if form.is_valid():
             excel_file = request.FILES['excel_file']
 
-            # حفظ الملف مؤقتاً
+            # طوق أمان: حفظ الملف مؤقتاً على الخادم لمعالجة بياناته قبل الإدخال النهائي
             file_path = f'media/temp_import_{int(time.time())}.xlsx'
             with open(file_path, 'wb+') as destination:
                 for chunk in excel_file.chunks():
                     destination.write(chunk)
 
-            # معاينة البيانات
+            # محاكاة الاستيراد لعرض معاينة للبيانات قبل الحفظ الفعلي
             try:
                 preview_data = []
                 df = pd.read_excel(file_path)
@@ -535,7 +585,7 @@ def bulk_import(request):
                 return render(request, 'products/products/bulk_import.html', context)
 
             except Exception as e:
-                messages.error(request, f'خطأ في قراءة الملف: {str(e)}')
+                messages.error(request, f'حدث خطأ أثناء قراءة ملف الـ Excel: {str(e)}')
     else:
         form = BulkImportForm()
 
@@ -543,18 +593,18 @@ def bulk_import(request):
 
 
 @login_required
-
 def bulk_import_confirm(request):
     """
-    تأكيد الاستيراد الجماعي
+    تأكيد الاستيراد الجماعي: المرحلة النهائية من استيراد ملف الـ Excel حيث يتم حفظ كافة المنتجات فعلياً في قاعدة البيانات.
     """
     if request.method == 'POST':
         file_path = request.POST.get('file_path')
 
         if file_path and os.path.exists(file_path):
+            # تنفيذ عملية الاستيراد الفعلي واسترجاع تقرير بالنتائج (النجاحات والإخفاقات)
             import_results = import_products_from_excel(file_path)
 
-            # حذف الملف المؤقت
+            # إجراء تنظيف: حذف ملف الاستيراد المؤقت لعدم استهلاك مساحة القرص
             os.remove(file_path)
 
             context = {
@@ -562,7 +612,7 @@ def bulk_import_confirm(request):
             }
             return render(request, 'products/products/bulk_import.html', context)
 
-    messages.error(request, 'لم يتم توفير ملف للاستيراد')
+    messages.error(request, 'عذراً، لم نتمكن من الوصول لملف البيانات لتأكيد الاستيراد.')
     return redirect('products:bulk_import')
 
 
@@ -598,14 +648,13 @@ def download_import_template(request):
 
 
 @login_required
-
 def export_products(request):
     """
-    تصدير المنتجات إلى Excel
+    تصدير البيانات: يتيح استخراج قائمة المنتجات الحالية إلى ملف Excel للتقارير أو الجرد الخارجي.
     """
     products = Product.objects.select_related('category', 'unit').prefetch_related('inventory_items')
 
-    # تطبيق نفس فلاتر البحث إذا وجدت
+    # الحفاظ على نفس سياق البحث والفلترة عند التصدير لضمان دقة البيانات المطلوبة
     search_query = request.GET.get('q', '')
     if search_query:
         products = products.filter(
@@ -618,37 +667,37 @@ def export_products(request):
     if category_filter:
         products = products.filter(category_id=category_filter)
 
-    # إنشاء ملف Excel
+    # توليد ملف الـ Excel برمجياً
     file_path = f'media/products_export_{int(time.time())}.xlsx'
     export_products_to_excel(products, file_path)
 
-    # إرجاع الملف للتحميل
+    # إرسال الملف كاستجابة HTTP ليقوم المتصفح بتحميله تلقائياً
     with open(file_path, 'rb') as f:
         response = HttpResponse(f.read(), content_type='application/vnd.ms-excel')
         response[
             'Content-Disposition'] = f'attachment; filename="products_export_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx"'
 
-    # حذف الملف المؤقت
+    # تنظيف الخادم: حذف الملف المؤقت بعد إتمام عملية التنزيل
     os.remove(file_path)
 
     return response
 
 
 @login_required
-
 def category_list(request):
     """
-    عرض قائمة التصنيفات بشكل شجري
+    عرض شجرة التصنيفات: يظهر كافة التصنيفات الرئيسية وفروعها مع إحصائيات سريعة عن المنتجات.
     """
+    # جلب الطبقة الأولى من الهيكل الشجري (التصنيفات التي ليس لها أب)
     categories = Category.objects.filter(parent__isnull=True).prefetch_related('products')
 
-    # إحصائيات
+    # تجميع بيانات إحصائية شاملة لعرضها في مقدمة الصفحة (Dashboard-style list)
     total_categories = Category.objects.count()
     active_categories = Category.objects.filter(is_active=True).count()
     main_categories = categories.count()
     total_products = Product.objects.count()
 
-    # توزيع أنواع التصنيفات
+    # توزيع التصنيفات حسب النوع (إلكترونيات، أغذية، إلخ) لتحليل محتوى المستودع
     category_types = []
     for choice in Category.CATEGORY_TYPES:
         count = Category.objects.filter(category_type=choice[0]).count()
@@ -771,13 +820,12 @@ def category_detail(request, pk):
 
 
 @login_required
-
 def unit_list(request):
     """
-    عرض قائمة وحدات القياس
+    إدارة وحدات القياس: عرض قائمة بكافة الوحدات المتاحة (كجم، لتر، قطعة) مع حساب عدد المنتجات التي تستخدم كل وحدة.
     """
     units = Unit.objects.annotate(
-        product_count=Count('product')
+        product_count=Count('product') # وسم كل وحدة بعدد المنتجات المرتبطة بها
     ).order_by('name')
 
     # إحصائيات
@@ -882,14 +930,13 @@ def unit_delete(request, pk):
 
 
 @login_required
-
 def warehouse_list(request):
     """
-    عرض قائمة المخازن
+    إدارة المستودعات: عرض نظرة شاملة لكافة أماكن التخزين مع إحصائيات حول سعة التخزين المستخدمة.
     """
     warehouses = Warehouse.objects.annotate(
-        products_count=Count('inventory_items'),
-        total_quantity=Sum('inventory_items__quantity')
+        products_count=Count('inventory_items'), # عدد الأصناف الفريدة في المستودع
+        total_quantity=Sum('inventory_items__quantity') # إجمالي كمية الوحدات المخزنة
     ).order_by('warehouse_type', 'name')
 
     # إحصائيات
@@ -990,27 +1037,26 @@ def warehouse_update(request, pk):
 
 
 @login_required
-
 def warehouse_detail(request, pk):
     """
-    عرض تفاصيل المخزن
+    البطاقة التفصيلية للمستودع: تظهر كافة المنتجات المتوفرة بداخل هذا الموقع التخزيني بالتحديد.
     """
     warehouse = get_object_or_404(Warehouse, pk=pk)
 
-    # المنتجات في المخزن
+    # جلب المنتجات المخزنة مع بياناتها الأساسية دفعة واحدة (Optimization)
     inventory_items = warehouse.inventory_items.select_related('product', 'product__category',
                                                                'product__unit').order_by('product__name')
 
-    # إحصائيات
+    # حساب القيم الإجمالية لمحتوى المستودع لأغراض التقارير المالية والرقابية
     products_count = inventory_items.count()
     total_quantity = sum(item.quantity for item in inventory_items)
     total_value = sum(item.quantity * item.product.purchase_price for item in inventory_items)
     low_stock_count = sum(1 for item in inventory_items if item.quantity <= item.product.min_stock)
 
-    # المنتجات منخفضة المخزون
+    # قائمة مختصرة بالمنتجات التي تتطلب لفت نظر المسؤول لنفاد كميتها
     low_stock_items = [item for item in inventory_items if item.quantity <= item.product.min_stock][:5]
 
-    # حركات المخزون الحديثة
+    # تتبع آخر العمليات التي تمت داخل هذا المستودع تحديداً
     recent_movements = StockMovement.objects.filter(
         warehouse=warehouse
     ).select_related('product', 'created_by').order_by('-created_at')[:10]
@@ -1114,14 +1160,13 @@ def search_by_barcode(request):
 
 
 @login_required
-
 def stock_movements(request):
     """
-    عرض حركات المخزون
+    سجل حركات المخزون (نسخة محسنة): توفر تتبعاً دقيقاً لعمليات الصادر والوارد مع إحصائيات سريعة للكميات التي تم تداولها.
     """
     movements = StockMovement.objects.select_related('product', 'warehouse', 'created_by').order_by('-created_at')
 
-    # الفلترة
+    # الفلترة الذكية حسب نوع الحركة، المنتج، أو المستودع
     movement_type = request.GET.get('type', '')
     if movement_type:
         movements = movements.filter(movement_type=movement_type)
@@ -1134,7 +1179,7 @@ def stock_movements(request):
     if warehouse_filter:
         movements = movements.filter(warehouse_id=warehouse_filter)
 
-    # إحصائيات الحركات
+    # حساب إحصائيات فورية للحركات المفلترة لتسهيل المراقبة
     total_incoming = movements.filter(
         Q(movement_type='purchase') | Q(movement_type='transfer_in')
     ).count()
@@ -1145,7 +1190,7 @@ def stock_movements(request):
 
     total_adjustments = movements.filter(movement_type='adjustment').count()
 
-    # الترقيم
+    # تقسيم العرض لضمان سرعة تحميل البيانات الكبيرة
     paginator = Paginator(movements, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1305,21 +1350,21 @@ def stock_transfer(request):
 
 
 @login_required
-
 def stock_alerts(request):
     """
-    عرض تنبيهات المخزون
+    مركز تنبيهات المخزون: شاشة مراقبة حية للمنتجات التي تواجه مشاكل في الكمية أو الصلاحية.
+    تساعد المسؤول على اتخاذ إجراءات استباقية قبل نفاد المخزون.
     """
     alerts = StockAlert.objects.select_related('product', 'warehouse').order_by('-created_at')
 
-    # إحصائيات التنبيهات
+    # تجميع ملخص لحالات التنبيهات المفتوحة والمغلقة لسهولة المراجعة الإدارية
     total_alerts = alerts.count()
     low_stock_count = alerts.filter(alert_type='low_stock', is_resolved=False).count()
     expiry_count = alerts.filter(alert_type='expiry', is_resolved=False).count()
     excess_count = alerts.filter(alert_type='excess', is_resolved=False).count()
     resolved_count = alerts.filter(is_resolved=True).count()
 
-    # فلترة التنبيهات النشطة فقط بشكل افتراضي
+    # خيار لإظهار التنبيهات التي تم حلها سابقاً للأرشفة والتدقيق
     show_resolved = request.GET.get('show_resolved')
     if not show_resolved:
         alerts = alerts.filter(is_resolved=False)
@@ -1336,10 +1381,10 @@ def stock_alerts(request):
 
 
 @login_required
-
 def resolve_alert(request, pk):
     """
-    حل تنبيه المخزون
+    التعامل مع التنبيهات: وضع علامة "تم الحل" على التنبيه بعد اتخاذ الإجراء المناسب من قبل المسؤول.
+    تدعم الطلبات العادية وطلبات الـ AJAX لتجربة مستخدم سريعة.
     """
     if request.method == 'POST':
         alert = get_object_or_404(StockAlert, pk=pk)
@@ -1350,41 +1395,41 @@ def resolve_alert(request, pk):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': True})
 
-        messages.success(request, 'تم حل التنبيه بنجاح')
+        messages.success(request, 'تم تمييز التنبيه كمحلول بنجاح')
         return redirect('products:stock_alerts')
 
     return JsonResponse({'success': False})
 
 
 @login_required
-
 def resolve_all_alerts(request):
     """
-    حل جميع تنبيهات المخزون
+    حل جماعي للتنبيهات: تتيح تصفية كافة التنبيهات المفتوحة بضغطة واحدة (مثال: بعد جرد شامل وتصحيح الأوضاع).
     """
     if request.method == 'POST':
         unresolved_alerts = StockAlert.objects.filter(is_resolved=False)
+        count_resolved = unresolved_alerts.count()
         unresolved_alerts.update(
             is_resolved=True,
             resolved_at=datetime.now()
         )
 
-        messages.success(request, f'تم حل {unresolved_alerts.count()} تنبيه بنجاح')
+        messages.success(request, f'بنجاح، تم تمييز {count_resolved} تنبيه كمحلول.')
         return redirect('products:stock_alerts')
 
     return redirect('products:stock_alerts')
 
 
 @login_required
-
 def inventory_dashboard(request):
     """
-    لوحة تحكم المخزون
+    لوحة التحكم الرئيسية للمخزون: تعرض ملخصاً للحالة العامة للمستودع بكافة مرافقه.
     """
-    # إحصائيات عامة
+    # تجميع الإحصائيات العامة للمخزون
     total_products = Product.objects.count()
     total_categories = Category.objects.count()
     total_warehouses = Warehouse.objects.count()
+    # جلب عدد التنبيهات الحرجة لنقص المخزون لمتابعتها فوراً
     low_stock_alerts = StockAlert.objects.filter(is_resolved=False, alert_type='low_stock').count()
 
     # المنتجات منخفضة المخزون

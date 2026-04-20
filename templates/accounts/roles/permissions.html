@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{# صفحة إدارة الصلاحيات: تتيح للمسؤول تحديد العمليات المسموح بها لكل دور وظيفي بدقة عالية (Granular Access Control) #}
+
 {% block title %}إدارة الصلاحيات - نظام الإدارة{% endblock %}
 
 {% block content %}
@@ -23,28 +25,29 @@
                         <form method="post" id="permissionsForm">
                             {% csrf_token %}
 
-                            <!-- Modules Tabs -->
+                            <!-- Modules Tabs / تبويبات الأقسام: لتنظيم الصلاحيات المتعددة بناءً على الوحدة البرمجية (المخازن، المبيعات، إلخ) -->
                             <ul class="nav nav-tabs mb-4" id="modulesTab" role="tablist">
                                 {% for module, permissions in permissions_by_module.items %}
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link {% if forloop.first %}active{% endif %}"
                                                 id="{{ module }}-tab" data-bs-toggle="tab"
-                                                data-bs-target="#{{ module }}" type="button">
+                                                data-bs-target="#{{ module|slugify }}" type="button">
                                             {{ module }}
                                         </button>
                                     </li>
                                 {% endfor %}
                             </ul>
 
-                            <!-- Permissions Content -->
+                            <!-- Permissions Content / محتوى الصلاحيات لكل قسم -->
                             <div class="tab-content" id="modulesTabContent">
                                 {% for module, permissions in permissions_by_module.items %}
                                     <div class="tab-pane fade {% if forloop.first %}show active{% endif %}"
-                                         id="{{ module }}">
+                                         id="{{ module|slugify }}">
                                         <div class="row">
                                             {% for permission in permissions %}
                                                 <div class="col-md-6 col-lg-4 mb-3">
                                                     <div class="form-check">
+                                                        {# حقل اختيار الصلاحية: يتم التحقق مما إذا كان الدور يملكها حالياً لتعليمها بصح #}
                                                         <input class="form-check-input permission-checkbox"
                                                                type="checkbox"
                                                                name="permissions"
@@ -65,7 +68,7 @@
                                 {% endfor %}
                             </div>
 
-                            <!-- Select All / None -->
+                            <!-- Select All / None / خيارات التحديد الجماعي لتسهيل تجربة المستخدم -->
                             <div class="card bg-light mt-4">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-center">
@@ -83,7 +86,7 @@
                                 </div>
                             </div>
 
-                            <!-- Submit Button -->
+                            <!-- Submit Button / أزرار الحفظ والإلغاء -->
                             <div class="d-flex gap-2 mt-4">
                                 <button type="submit" class="btn btn-success">
                                     <i class="fas fa-save me-2"></i>حفظ الصلاحيات
@@ -100,26 +103,19 @@
     </div>
 
     <script>
+        {# منطق جافاسكريبت للتحكم الجماعي في صناديق الاختيار (Checkboxes) #}
         document.addEventListener('DOMContentLoaded', function () {
-            // Select All functionality
+            // وظيفة تحديد جميع الصلاحيات دفعة واحدة
             document.getElementById('selectAll').addEventListener('click', function () {
                 document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
                     checkbox.checked = true;
                 });
             });
 
-            // Select None functionality
+            // وظيفة إلغاء تحديد جميع الصلاحيات
             document.getElementById('selectNone').addEventListener('click', function () {
                 document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
                     checkbox.checked = false;
-                });
-            });
-
-            // Module-specific select all
-            document.querySelectorAll('.nav-link').forEach(tab => {
-                tab.addEventListener('click', function () {
-                    const moduleId = this.getAttribute('data-bs-target').substring(1);
-                    // You can add module-specific select all functionality here
                 });
             });
         });

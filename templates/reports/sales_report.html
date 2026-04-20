@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تقرير المبيعات - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-chart-line me-2 text-primary"></i>
+            تحليل تقارير المبيعات
+        </h1>
+        <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-1"></i> عودة
+        </a>
+    </div>
+
+    <!-- ملخص مبيعات الشهر -->
+    <div class="row mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm bg-gradient-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <div class="icon-shape bg-white text-primary rounded-circle p-3 me-3">
+                        <i class="fas fa-dollar-sign fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 small text-uppercase opacity-7">مبيعات آخر 30 يوم</h6>
+                        <h3 class="mb-0 font-weight-bold">{{ total_amount }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm bg-gradient-info text-white p-3">
+                <div class="d-flex align-items-center">
+                    <div class="icon-shape bg-white text-info rounded-circle p-3 me-3">
+                        <i class="fas fa-file-invoice fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 small text-uppercase opacity-7">عدد الفواتير</h6>
+                        <h3 class="mb-0 font-weight-bold">{{ total_count }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- المنتجات الأكثر مبيعاً -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">أكثر 10 منتجات مبيعاً (بالكمية)</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>المنتج</th>
+                            <th>الكمية المباعة</th>
+                            <th>إجمالي القيمة المبيعة</th>
+                            <th>التطور</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in top_products %}
+                        <tr>
+                            <td class="fw-bold">{{ item.product__name }}</td>
+                            <td><span class="badge bg-primary rounded-pill">{{ item.total_qty }}</span></td>
+                            <td class="text-success fw-bold">{{ item.total_val }}</td>
+                            <td>
+                                <div class="progress" style="height: 5px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: 75%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bg-gradient-primary { background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); }
+    .bg-gradient-info { background: linear-gradient(135deg, #36b9cc 0%, #258391 100%); }
+</style>
+{% endblock %}

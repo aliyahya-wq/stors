@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}حذف طلب شراء - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-0">
+                <div class="card-body p-5 text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-trash-alt fa-4x text-danger"></i>
+                    </div>
+                    <h2 class="h4 mb-3 font-weight-bold">تأكيد حذف طلب الشراء</h2>
+                    <p class="text-muted mb-4">
+                        هل أنت متأكد من حذف طلب الشراء <strong>#PO-{{ order.id }}</strong>؟
+                        <br>
+                        <span class="text-danger small">لا يمكن التراجع عن هذا الإجراء بعد التنفيذ.</span>
+                    </p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <a href="{% url 'purchases:purchase_list' %}" class="btn btn-light px-4 border">إلغاء</a>
+                            <button type="submit" class="btn btn-danger px-4">حذف طلب الشراء</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

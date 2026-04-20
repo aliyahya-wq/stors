@@ -1,13 +1,15 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{# صفحة الملف الشخصي: تتيح للمستخدم الحالي تحديث بياناته الخاصة ومراجعة أحدث أنشطته في النظام #}
+
 {% block title %}الملف الشخصي - نظام الإدارة{% endblock %}
 
 {% block content %}
     <div class="container-fluid">
         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
             <h1 class="h2">
-                <i class="fas fa-user me-2"></i>الملف الشخصي
+                <i class="fas fa-user-circle me-2"></i>ملفي الشخصي
             </h1>
             <div class="btn-toolbar mb-2 mb-md-0">
                 <a href="{% url 'accounts:password_change' %}" class="btn btn-warning">
@@ -17,37 +19,36 @@
         </div>
 
         <div class="row">
-            <!-- Profile Information -->
+            <!-- Profile Information / نموذج تحديث بياناتي -->
             <div class="col-md-8">
                 <div class="card shadow mb-4">
                     <div class="card-header bg-white">
                         <h5 class="card-title mb-0">
-                            <i class="fas fa-user-circle me-2"></i>معلومات المستخدم
+                            <i class="fas fa-user-edit me-2"></i>تحديث البيانات الشخصية
                         </h5>
                     </div>
                     <div class="card-body">
+                        {# نموذج تحديث بيانات المستخدم المعتمد على UserProfileForm #}
                         <form method="post" novalidate>
                             {% csrf_token %}
 
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="{{ form.first_name.id_for_label }}" class="form-label">الاسم
-                                            الأول</label>
+                                        <label for="{{ form.first_name.id_for_label }}" class="form-label">الاسم الأول</label>
                                         {{ form.first_name }}
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="{{ form.last_name.id_for_label }}" class="form-label">الاسم
-                                            الأخير</label>
+                                        <label for="{{ form.last_name.id_for_label }}" class="form-label">الاسم الأخير</label>
                                         {{ form.last_name }}
                                     </div>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="{{ form.email.id_for_label }}" class="form-label">البريد الإلكتروني</label>
+                                <label for="{{ form.email.id_for_label }}" class="form-label">البريد الإلكتروني (غير قابل للتعديل عادةً)</label>
                                 {{ form.email }}
                             </div>
 
@@ -67,57 +68,43 @@
                             </div>
 
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>حفظ التغييرات
+                                <i class="fas fa-save me-2"></i>حفظ التعديلات
                             </button>
                         </form>
                     </div>
                 </div>
             </div>
 
-            <!-- User Stats -->
+            <!-- User Stats / بطاقة تعريفية وإحصائيات -->
             <div class="col-md-4">
                 <div class="card shadow mb-4">
                     <div class="card-header bg-white">
                         <h5 class="card-title mb-0">
-                            <i class="fas fa-chart-bar me-2"></i>الإحصائيات
+                            <i class="fas fa-id-card me-2"></i>نظرة عامة
                         </h5>
                     </div>
-                    <div class="card-body">
-                        <div class="text-center mb-4">
-                            <div class="avatar bg-primary text-white rounded-circle mx-auto d-flex align-items-center justify-content-center"
-                                 style="width: 80px; height: 80px; font-size: 24px;">
-                                {{ user.first_name|first }}{{ user.last_name|first }}
-                            </div>
-                            <h5 class="mt-3">{{ user.first_name }} {{ user.last_name }}</h5>
-                            <span class="badge badge-{{ user.role.name }}">{{ user.role.get_name_display }}</span>
+                    <div class="card-body text-center">
+                        <div class="avatar bg-primary text-white rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3"
+                             style="width: 80px; height: 80px; font-size: 24px;">
+                            {{ user.first_name|first }}{{ user.last_name|first }}
                         </div>
+                        <h5 class="fw-bold">{{ user.first_name }} {{ user.last_name }}</h5>
+                        <span class="badge badge-{{ user.role.name }} mb-4">{{ user.role.get_name_display }}</span>
 
-                        <div class="list-group list-group-flush">
+                        <div class="list-group list-group-flush text-end">
                             <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>البريد الإلكتروني:</span>
-                                <span class="text-muted">{{ user.email }}</span>
+                                <span class="small text-muted">تاريخ الانضمام:</span>
+                                <span class="small">{{ user.created_at|date:"Y-m-d" }}</span>
                             </div>
                             <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>رقم الهاتف:</span>
-                                <span class="text-muted">{{ user.phone }}</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>القسم:</span>
-                                <span class="text-muted">{{ user.department }}</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>تاريخ الإنشاء:</span>
-                                <span class="text-muted">{{ user.created_at|date:"Y-m-d" }}</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>آخر تسجيل دخول:</span>
-                                <span class="text-muted">
+                                <span class="small text-muted">آخر دخول:</span>
+                                <span class="small text-muted">
                                 {% if user.last_login %}
                                     {{ user.last_login|date:"Y-m-d H:i" }}
                                 {% else %}
                                     لأول مرة
                                 {% endif %}
-                            </span>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -125,13 +112,13 @@
             </div>
         </div>
 
-        <!-- Recent Activities -->
+        <!-- Recent Activities / سجل آخر الأنشطة الخاصة بالمستخدم -->
         <div class="row">
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-header bg-white">
                         <h5 class="card-title mb-0">
-                            <i class="fas fa-history me-2"></i>آخر الأنشطة
+                            <i class="fas fa-history me-2"></i>آخر عملياتي في النظام
                         </h5>
                     </div>
                     <div class="card-body">
@@ -155,6 +142,7 @@
                                             <td>{{ activity.model }}</td>
                                             <td>
                                                 <small class="text-muted">
+                                                    {# عرض مفاتيح وقيم التفاصيل لسهولة الفهم #}
                                                     {% for key, value in activity.details.items %}
                                                         {{ key }}: {{ value }}{% if not forloop.last %}, {% endif %}
                                                     {% endfor %}
@@ -169,7 +157,7 @@
                         {% else %}
                             <div class="text-center py-4">
                                 <i class="fas fa-inbox fa-2x text-muted mb-3"></i>
-                                <p class="text-muted">لا توجد أنشطة مسجلة بعد</p>
+                                <p class="text-muted">لم تقم بأي عمليات مسجلة حتى الآن.</p>
                             </div>
                         {% endif %}
                     </div>
@@ -179,32 +167,12 @@
     </div>
 
     <style>
-        .avatar {
-            font-weight: bold;
-        }
-
-        .badge-super_admin {
-            background-color: #e74c3c;
-        }
-
-        .badge-admin {
-            background-color: #3498db;
-        }
-
-        .badge-inventory_manager {
-            background-color: #f39c12;
-        }
-
-        .badge-purchase_manager {
-            background-color: #9b59b6;
-        }
-
-        .badge-sales_manager {
-            background-color: #27ae60;
-        }
-
-        .badge-viewer {
-            background-color: #95a5a6;
-        }
+        .avatar { font-weight: bold; }
+        .badge-super_admin { background-color: #e74c3c; }
+        .badge-admin { background-color: #3498db; }
+        .badge-inventory_manager { background-color: #f39c12; }
+        .badge-purchase_manager { background-color: #9b59b6; }
+        .badge-sales_manager { background-color: #27ae60; }
+        .badge-viewer { background-color: #95a5a6; }
     </style>
 {% endblock %}

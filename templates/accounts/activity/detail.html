@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{# صفحة تفاصيل النشاط: تعرض معلومات معمقة حول عملية محددة تم تسجيلها في السجل #}
+
 {% block title %}تفاصيل النشاط - نظام الإدارة{% endblock %}
 
 {% block content %}
@@ -17,7 +19,7 @@
         </div>
 
         <div class="row">
-            <!-- Activity Details -->
+            <!-- Activity Details / معلومات العمليّة -->
             <div class="col-md-8">
                 <div class="card shadow mb-4">
                     <div class="card-header bg-white">
@@ -47,6 +49,7 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">الإجراء</label>
                                     <p>
+                                    {# استخدام شارات ملونة لتسهيل التمييز البصري لنوع الإجراء #}
                                     <span class="badge 
                                         {% if 'إنشاء' in activity.action %}bg-success
                                         {% elif 'تحديث' in activity.action %}bg-primary
@@ -88,6 +91,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">الوقت</label>
+                                    {# عرض الوقت بتنسيق دقيق يشمل الثواني #}
                                     <p class="form-control-plaintext">{{ activity.timestamp|date:"Y-m-d H:i:s" }}</p>
                                 </div>
                             </div>
@@ -95,7 +99,7 @@
                     </div>
                 </div>
 
-                <!-- Activity Details JSON -->
+                <!-- Activity Details JSON / التفاصيل التقنية للعملية -->
                 <div class="card shadow">
                     <div class="card-header bg-white">
                         <h5 class="card-title mb-0">
@@ -103,6 +107,7 @@
                         </h5>
                     </div>
                     <div class="card-body">
+                        {# عرض البيانات بصيغتها الأصلية المخزنة في قاعدة البيانات #}
                         <pre><code id="jsonDetails">{{ activity.details|pprint }}</code></pre>
                         <button class="btn btn-outline-primary btn-sm mt-2" onclick="copyToClipboard()">
                             <i class="fas fa-copy me-2"></i>نسخ النص
@@ -111,7 +116,7 @@
                 </div>
             </div>
 
-            <!-- User Information -->
+            <!-- User Information / معلومات إضافية عن المستخدم الذي قام بالعملية -->
             <div class="col-md-4">
                 <div class="card shadow">
                     <div class="card-header bg-white">
@@ -162,10 +167,10 @@
     </div>
 
     <script>
+        {# وظيفة نسخ تفاصيل الـ JSON للحافظة لتسهيل مشاركتها مع المطورين في حال وجود مشكلة #}
         function copyToClipboard() {
             const jsonText = document.getElementById('jsonDetails').textContent;
             navigator.clipboard.writeText(jsonText).then(function () {
-                // Show success message
                 const btn = event.target;
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-check me-2"></i>تم النسخ!';
@@ -186,29 +191,13 @@
             font-weight: bold;
         }
 
-        .badge-super_admin {
-            background-color: #e74c3c;
-        }
-
-        .badge-admin {
-            background-color: #3498db;
-        }
-
-        .badge-inventory_manager {
-            background-color: #f39c12;
-        }
-
-        .badge-purchase_manager {
-            background-color: #9b59b6;
-        }
-
-        .badge-sales_manager {
-            background-color: #27ae60;
-        }
-
-        .badge-viewer {
-            background-color: #95a5a6;
-        }
+        /* تنسيق ألوان الأدوار الصادر من قاعدة البيانات */
+        .badge-super_admin { background-color: #e74c3c; }
+        .badge-admin { background-color: #3498db; }
+        .badge-inventory_manager { background-color: #f39c12; }
+        .badge-purchase_manager { background-color: #9b59b6; }
+        .badge-sales_manager { background-color: #27ae60; }
+        .badge-viewer { background-color: #95a5a6; }
 
         pre {
             background: #f8f9fa;

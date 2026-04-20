@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تقرير المشتريات - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-file-invoice-dollar me-2 text-danger"></i>
+            تقرير المشتريات والمصاريف
+        </h1>
+        <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-1"></i> عودة
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm bg-gradient-danger text-white p-3">
+                <div class="d-flex align-items-center">
+                    <div class="icon-shape bg-white text-danger rounded-circle p-3 me-3">
+                        <i class="fas fa-shopping-basket fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 small text-uppercase opacity-7">مشتريات آخر 30 يوم</h6>
+                        <h3 class="mb-0 font-weight-bold">{{ total_amount }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm bg-gradient-secondary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <div class="icon-shape bg-white text-secondary rounded-circle p-3 me-3">
+                        <i class="fas fa-receipt fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 small text-uppercase opacity-7">عدد طلبات الشراء</h6>
+                        <h3 class="mb-0 font-weight-bold">{{ total_count }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-danger">تحليل المشتريات</h6>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">تقرير مفصل حول الموردين الأكثر توريداً والمنتجات التي تم شراءها بكثرة سيتم إضافته في التحديثات القادمة.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bg-gradient-danger { background: linear-gradient(135deg, #e74a3b 0%, #be2617 100%); }
+    .bg-gradient-secondary { background: linear-gradient(135deg, #858796 0%, #60616f 100%); }
+</style>
+{% endblock %}

@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}تفاصيل طلب الشراء: PO-{{ order.id }} - نظام المخازن{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h1 class="h3 mb-1 text-gray-800">طلب شراء #PO-{{ order.id }}</h1>
+            <p class="text-muted mb-0">تاريخ الإنشاء: {{ order.created_at|date:"Y-m-d H:i" }}</p>
+        </div>
+        <div class="gap-2 d-flex">
+            <a href="{% url 'purchases:purchase_pdf' order.id %}" class="btn-pdf-header shadow-sm">
+                <i class="fas fa-file-pdf me-2"></i> تحميل PDF احترافي
+            </a>
+            <button onclick="window.print()" class="btn btn-info text-white">
+                <i class="fas fa-print me-1"></i> طباعة
+            </button>
+            <a href="{% url 'purchases:purchase_update' order.id %}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i> تعديل
+            </a>
+            <a href="{% url 'purchases:purchase_list' %}" class="btn btn-outline-dark">
+                <i class="fas fa-arrow-right me-1"></i> عودة للقائمة
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Invoice Area -->
+        <div class="col-lg-9">
+            <div class="card shadow mb-4" id="printableArea">
+                <div class="card-body p-5">
+                    <!-- Invoice Header (for Print) -->
+                    <div class="row mb-5">
+                        <div class="col-sm-6">
+                            <h2 class="text-primary fw-bold mb-3">نظام المخازن الذكي</h2>
+                            <p class="mb-1"><strong>المخزن المستلم:</strong> {{ order.warehouse.name }}</p>
+                            <p class="mb-1"><strong>العنوان:</strong> {{ order.warehouse.address|default:"-" }}</p>
+                            <p class="mb-0"><strong>بواسطة:</strong> {{ order.created_by.get_full_name }}</p>
+                        </div>
+                        <div class="col-sm-6 text-sm-end">
+                            <h3 class="text-dark mb-3">طلب شراء</h3>
+                            <p class="mb-1"><strong>الرقم المرجعي:</strong> PO-{{ order.id }}</p>
+                            <p class="mb-1"><strong>تاريخ الطلب:</strong> {{ order.created_at|date:"Y-m-d" }}</p>
+                            <p class="mb-0">
+                                <strong>الحالة:</strong>
+                                {% if order.status == 'pending' %} قيد الانتظار
+                                {% elif order.status == 'completed' %} مكتمل
+                                {% else %} ملغي {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="row mb-5">
+                        <div class="col-sm-6">
+                            <h6 class="text-muted text-uppercase fw-bold mb-3">المورد:</h6>
+                            <h5 class="text-dark font-weight-bold mb-1">{{ order.supplier.name }}</h5>
+                            <p class="mb-1">{{ order.supplier.address }}</p>
+                            <p class="mb-1">الهاتف: {{ order.supplier.phone }}</p>
+                            <p class="mb-0">البريد: {{ order.supplier.email }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="bg-primary text-white">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">#</th>
+                                    <th>المنتج</th>
+                                    <th class="text-center">الكمية</th>
+                                    <th class="text-end">سعر الوحدة</th>
+                                    <th class="text-end">الإجمالي</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td class="text-center">{{ forloop.counter }}</td>
+                                    <td>
+                                        <div class="fw-bold">{{ item.product.name }}</div>
+                                        <small class="text-muted">{{ item.product.sku }}</small>
+                                    </td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td class="text-end">{{ item.unit_price }}</td>
+                                    <td class="text-end fw-bold">{{ item.total_price }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold pt-4 h5">إجمالي القيمة:</td>
+                                    <td class="text-end fw-bold pt-4 h5 text-primary">{{ order.total_amount }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    {% if order.notes %}
+                    <div class="mt-5 p-3 bg-light border-start border-4 border-primary">
+                        <h6 class="fw-bold"><i class="fas fa-sticky-note me-2 text-primary"></i>ملاحظات:</h6>
+                        <p class="mb-0">{{ order.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Info -->
+        <div class="col-lg-3 no-print">
+            <div class="card shadow mb-4 border-start border-warning border-4">
+                <div class="card-body">
+                    <h6 class="fw-bold text-warning mb-3"><i class="fas fa-exclamation-triangle me-2"></i>معلومات الحالة</h6>
+                    <p class="small text-muted mb-4">تغيير حالة الطلب يؤثر على مستويات المخزون بشكل آلي (في حال اكتمال الطلب).</p>
+                    <form method="post" action="{% url 'purchases:purchase_update' order.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status_only" value="1">
+                        <div class="mb-3">
+                            <label class="form-label small font-weight-bold">تغيير الحالة إلى:</label>
+                            <select name="status" class="form-select form-select-sm">
+                                <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>قيد الانتظار</option>
+                                <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>مكتمل (استلام)</option>
+                                <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>ملغي</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-warning w-100">تحديث الحالة</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">تاريخ التحديث</h6>
+                </div>
+                <div class="card-body small">
+                    <div class="mb-2"><strong>آخر تحديث:</strong><br>{{ order.updated_at|date:"Y-m-d H:i" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-pdf-header {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        color: white !important;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .btn-pdf-header:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(220,38,38,0.4); }
+    .btn-pdf-header:active { transform: translateY(0); }
+
+    @media print {
+        .no-print { display: none !important; }
+        .sidebar { display: none !important; }
+        main { margin-right: 0 !important; width: 100% !important; }
+        .card { border: none !important; shadow: none !important; }
+        .card-body { padding: 0 !important; }
+    }
+</style>
+{% endblock %}

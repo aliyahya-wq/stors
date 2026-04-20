@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{# لوحة تحكم إدارة المستخدمين: مخصصة للمسؤولين لمراقبة حالة الطاقم، توزيع الأدوار، وتتبع أحدث الأنشطة الحيوية في النظام #}
+
+{% block title %}إدارة المستخدمين - نظرة شاملة{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* تصميم مخصص للوحة الإدارة يركز على الوضوح وكفاءة عرض البيانات الكبيرة */
+    :root {
+        --bg-gray: #f8fafc;
+        --border-color: #e2e8f0;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --primary-blue: #2563eb;
+    }
+
+    body {
+        background-color: var(--bg-gray);
+        color: var(--text-main);
+    }
+
+    .dashboard-wrapper {
+        padding: 2.5rem;
+    }
+
+    .header-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* شريط القياسات (Metrics) لعرض الأرقام الإجمالية بشكل سريع */
+    .metric-ribbon {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .metric-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-top: 0.5rem;
+    }
+
+    .metric-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    /* تنسيق أقسام البيانات والجداول الضخمة */
+    .data-section {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 2.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .section-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0;
+    }
+
+    .huge-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .huge-table thead th {
+        background: #f1f5f9;
+        padding: 1.25rem 2rem;
+        text-align: right;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .huge-table tbody td {
+        padding: 1.75rem 2rem;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 1.05rem;
+        vertical-align: middle;
+    }
+
+    .huge-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .user-pill {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .user-icon {
+        width: 44px;
+        height: 44px;
+        background: #e2e8f0;
+        color: #475569;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+
+    .action-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    .btn-action {
+        padding: 0.6rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 700;
+    }
+
+    .role-list {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .role-item {
+        background: #f1f5f9;
+        border: 1px solid var(--border-color);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Header Area / ترويسة الصفحة وإجراءات سريعة -->
+    <div class="header-section d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="section-title h2">إدارة المستخدمين والأنشطة</h1>
+            <p class="text-muted mb-0">تحكم شامل في صلاحيات النظام ومراقبة سجل العمليات اليومية.</p>
+        </div>
+        <a href="{% url 'accounts:user_create' %}" class="btn btn-primary btn-action shadow-sm">
+            <i class="fas fa-plus me-2"></i>إضافة مستخدم جديد
+        </a>
+    </div>
+
+    <!-- Quick Stats Ribbon / شريط الإحصائيات السريع -->
+    <div class="metric-ribbon">
+        <div class="metric-card shadow-sm">
+            <div class="metric-label">إجمالي الكادر</div>
+            <div class="metric-value">{{ total_users }}</div>
+        </div>
+        <div class="metric-card shadow-sm">
+            <div class="metric-label">المستخدمين النشطين</div>
+            <div class="metric-value">{{ active_users }}</div>
+        </div>
+        <div class="metric-card shadow-sm" style="flex-grow: 2;">
+            <div class="metric-label">توزيع الأدوار</div>
+            <div class="role-list mt-3">
+                {# عرض توزيع الموظفين على المسميات الوظيفية المختلفة #}
+                {% for role in role_distribution %}
+                    <div class="role-item">
+                        {{ role.name }}: <span class="text-primary fw-bold">{{ role.user_count }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Large Table Section / قسم جدول سجل الأنشطة الأحدث -->
+    <div class="data-section shadow-sm">
+        <div class="section-header">
+            <h5 class="section-title"><i class="fas fa-history me-2"></i>سجل أنشطة النظام (الأحدث)</h5>
+            <a href="{% url 'accounts:activity_logs' %}" class="text-primary text-decoration-none fw-bold">
+                مشاهدة السجل الكامل <i class="fas fa-arrow-left ms-2"></i>
+            </a>
+        </div>
+        <div class="table-responsive">
+            <table class="huge-table">
+                <thead>
+                    <tr>
+                        <th>المستخدم</th>
+                        <th>نوع الإجراء</th>
+                        <th>التفاصيل</th>
+                        <th>التاريخ والوقت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in all_activities %}
+                    <tr>
+                        <td>
+                            <div class="user-pill">
+                                {# عرض الحرف الأول من الاسم كرمز بصري للمستخدم #}
+                                <div class="user-icon">{{ activity.user.first_name|first|upper }}</div>
+                                <div>
+                                    <div class="fw-bold">{{ activity.user.get_full_name|default:activity.user.email }}</div>
+                                    <div class="small text-muted">{{ activity.user.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {# تلوين الشارة بناءً على نوع العملية المنفذة #}
+                            <span class="action-badge {% if 'حذف' in activity.action %}bg-danger-subtle text-danger border border-danger-subtle{% elif 'إنشاء' in activity.action %}bg-success-subtle text-success border border-success-subtle{% else %}bg-primary-subtle text-primary border border-primary-subtle{% endif %}">
+                                {{ activity.action }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="small fw-bold mb-1">{{ activity.model }}</div>
+                            <div class="small text-muted">
+                                {# استخراج وتنسيق تفاصيل البيانات التي تأثرت بالعملية #}
+                                {% for key, value in activity.details.items %}
+                                    <span class="me-2">{{ key }}: <span class="text-dark">{{ value }}</span></span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="text-muted">
+                            <i class="far fa-clock me-1"></i> {{ activity.timestamp|date:"Y-m-d H:i" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">لا توجد أنشطة مسجلة حالياً.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- New Members Section / قسم أحدث المستخدمين المنضمين للنظام -->
+        <div class="col-lg-6">
+            <div class="data-section shadow-sm h-100">
+                <div class="section-header">
+                    <h5 class="section-title"><i class="fas fa-user-plus me-2"></i>أحدث المنضمين</h5>
+                    <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">إدارة الجميع</a>
+                </div>
+                <div class="p-0">
+                    <table class="huge-table">
+                        <tbody>
+                            {% for u in recent_users %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ u.get_full_name|default:u.email }}</div>
+                                    <div class="small text-muted">{{ u.email }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-dark border">{{ u.role.name }}</span>
+                                </td>
+                                <td class="text-end text-muted small">
+                                    {{ u.date_joined|date:"Y-m-d" }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help/Actions Section / قسم المساعدة وتخصيص الصلاحيات -->
+        <div class="col-lg-6">
+            <div class="data-section shadow-sm h-100 p-4 d-flex flex-column justify-content-center align-items-center text-center">
+                <div class="p-4 bg-primary-subtle rounded-circle mb-4">
+                    <i class="fas fa-shield-alt fa-3x text-primary"></i>
+                </div>
+                <h4 class="fw-bold">إدارة متقدمة للصلاحيات</h4>
+                <p class="text-muted mb-4 px-lg-5">يمكنك إضافة أدوار جديدة وتخصيص الصلاحيات بدقة لكل موظف لضمان أمان البيانات في المستودع.</p>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'accounts:role_list' %}" class="btn btn-primary px-4 btn-action">إدارة الأدوار</a>
+                    <a href="{% url 'accounts:activity_logs' %}" class="btn btn-outline-primary px-4 btn-action">سجل النظام</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

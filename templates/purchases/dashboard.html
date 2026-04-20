@@ -1,68 +1,198 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}لوحة تحكم المشتريات{% endblock %}
+{% block title %}لوحة تحكم المشتريات - نظام المخازن{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kpi-card { border-radius: 14px; border: none; padding: 20px 22px; transition: transform 0.2s, box-shadow 0.2s; }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important; }
+    .kpi-icon { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+    .kpi-value { font-size: 1.8rem; font-weight: 800; line-height: 1.1; }
+    .kpi-label { font-size: 0.78rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+    .section-card { border-radius: 14px; border: none; }
+    .section-card .card-header { background: white; border-bottom: 1px solid #f1f5f9; padding: 16px 20px; border-radius: 14px 14px 0 0 !important; }
+    .section-card .card-header h6 { font-size: 0.9rem; font-weight: 700; color: #1e293b; margin: 0; }
+    .table th { background: #f8fafc; font-size: 0.75rem; font-weight: 700; color: #64748b; border: none; padding: 10px 14px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .table td { font-size: 0.87rem; padding: 12px 14px; vertical-align: middle; border-color: #f1f5f9; }
+    .table tbody tr:hover { background: #f8fafc; }
+    .status-pending { background: rgba(245,158,11,0.12); color: #d97706; border: 1px solid rgba(245,158,11,0.3); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+    .status-completed { background: rgba(34,197,94,0.12); color: #16a34a; border: 1px solid rgba(34,197,94,0.3); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+    .status-cancelled { background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.25); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+    .quick-btn { border-radius: 10px; padding: 12px 16px; font-size: 0.87rem; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: all 0.2s; border: 1.5px solid; }
+    .quick-btn:hover { transform: translateX(-3px); }
+    .supplier-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: #10b981; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 px-4">
+
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0">لوحة تحكم المشتريات</h1>
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-primary" onclick="window.location.href='#'">
-                <i class="fas fa-plus me-2"></i>
-                إضافة طلب شراء
-            </button>
+        <div>
+            <h1 class="h4 fw-bold text-dark mb-1">
+                <i class="fas fa-shopping-cart text-primary me-2"></i>
+                لوحة تحكم المشتريات
+            </h1>
+            <p class="text-muted mb-0" style="font-size:0.83rem">نظرة شاملة على طلبات الشراء والموردين</p>
+        </div>
+        <a href="{% url 'purchases:create' %}" class="btn btn-primary rounded-3 shadow-sm px-4">
+            <i class="fas fa-plus me-2"></i>طلب شراء جديد
+        </a>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:rgba(59,130,246,0.12)">
+                        <i class="fas fa-shopping-cart" style="color:#3b82f6"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-value text-dark">{{ total_purchases }}</div>
+                        <div class="kpi-label">إجمالي طلبات الشراء</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:rgba(245,158,11,0.12)">
+                        <i class="fas fa-clock" style="color:#f59e0b"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-value" style="color:#d97706">{{ pending_purchases }}</div>
+                        <div class="kpi-label">قيد الانتظار</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:rgba(16,185,129,0.12)">
+                        <i class="fas fa-truck-moving" style="color:#10b981"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-value text-dark">{{ total_suppliers }}</div>
+                        <div class="kpi-label">إجمالي الموردين</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:rgba(239,68,68,0.1)">
+                        <i class="fas fa-coins" style="color:#ef4444"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-value" style="color:#dc2626;font-size:1.4rem">{{ total_value|floatformat:0 }}</div>
+                        <div class="kpi-label">إجمالي قيمة المشتريات</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-value">0</div>
-                <div class="stat-label">إجمالي طلبات الشراء</div>
+    <div class="row g-4">
+        <!-- Recent Purchase Orders -->
+        <div class="col-xl-8">
+            <div class="card section-card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6><i class="fas fa-list-alt text-primary me-2"></i>أحدث طلبات الشراء</h6>
+                    <a href="{% url 'purchases:purchase_list' %}" class="btn btn-outline-primary btn-sm rounded-3 px-3" style="font-size:0.8rem">
+                        عرض الكل <i class="fas fa-arrow-left ms-1"></i>
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>رقم الطلب</th>
+                                <th>المورد</th>
+                                <th>التاريخ</th>
+                                <th>القيمة</th>
+                                <th>الحالة</th>
+                                <th class="text-center">إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_purchases %}
+                            <tr>
+                                <td><span class="fw-bold text-primary">#PO-{{ order.id }}</span></td>
+                                <td>
+                                    <span class="supplier-dot me-1"></span>
+                                    {{ order.supplier.name }}
+                                </td>
+                                <td><span class="text-muted">{{ order.created_at|date:"Y/m/d" }}</span></td>
+                                <td><span class="fw-bold text-dark">{{ order.total_amount }}</span></td>
+                                <td>
+                                    {% if order.status == 'pending' %}<span class="status-pending"><i class="fas fa-clock me-1"></i>قيد الانتظار</span>
+                                    {% elif order.status == 'completed' %}<span class="status-completed"><i class="fas fa-check me-1"></i>مكتمل</span>
+                                    {% else %}<span class="status-cancelled"><i class="fas fa-times me-1"></i>ملغي</span>{% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'purchases:purchase_detail' order.id %}" class="btn btn-sm btn-outline-secondary rounded-2" style="width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;">
+                                        <i class="fas fa-eye" style="font-size:0.75rem"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="fas fa-shopping-basket d-block fa-2x mb-2" style="opacity:0.3"></i>
+                                    لا توجد طلبات شراء بعد
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card bg-success">
-                <div class="stat-value">0</div>
-                <div class="stat-label">طلبات قيد الانتظار</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card bg-warning">
-                <div class="stat-value">0</div>
-                <div class="stat-label">إجمالي الموردين</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card bg-danger">
-                <div class="stat-value">0</div>
-                <div class="stat-label">إجمالي القيمة</div>
-            </div>
-        </div>
-    </div>
 
-    <div class="row">
-        <div class="col-md-8">
-            <div class="recent-activity p-4 bg-white rounded shadow-sm">
-                <h4 class="mb-3">أحدث طلبات الشراء</h4>
-                <p class="text-muted">لا توجد طلبات شراء حديثة</p>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="quick-actions p-4 bg-white rounded shadow-sm">
-                <h4 class="mb-3">إجراءات سريعة</h4>
-                <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="window.location.href='#'">
-                    <i class="fas fa-plus me-2"></i>
-                    طلب شراء جديد
-                </button>
-                <button type="button" class="btn btn-outline-success w-100 mb-2" onclick="window.location.href='#'">
-                    <i class="fas fa-users me-2"></i>
-                    إدارة الموردين
-                </button>
-                <button type="button" class="btn btn-outline-info w-100" onclick="window.location.href='#'">
-                    <i class="fas fa-chart-bar me-2"></i>
-                    تقارير المشتريات
-                </button>
+        <!-- Quick Actions -->
+        <div class="col-xl-4">
+            <div class="card section-card shadow-sm">
+                <div class="card-header">
+                    <h6><i class="fas fa-bolt text-warning me-2"></i>إجراءات سريعة</h6>
+                </div>
+                <div class="card-body p-3 d-grid gap-2">
+                    <a href="{% url 'purchases:create' %}" class="quick-btn btn border-primary text-primary bg-transparent">
+                        <div class="kpi-icon" style="width:36px;height:36px;background:rgba(59,130,246,0.1);border-radius:8px;font-size:1rem">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        طلب شراء جديد
+                    </a>
+                    <a href="{% url 'purchases:supplier_list' %}" class="quick-btn btn border-success text-success bg-transparent">
+                        <div class="kpi-icon" style="width:36px;height:36px;background:rgba(16,185,129,0.1);border-radius:8px;font-size:1rem">
+                            <i class="fas fa-truck-moving"></i>
+                        </div>
+                        إدارة الموردين
+                    </a>
+                    <a href="{% url 'purchases:supplier_create' %}" class="quick-btn btn border-info text-info bg-transparent">
+                        <div class="kpi-icon" style="width:36px;height:36px;background:rgba(6,182,212,0.1);border-radius:8px;font-size:1rem">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        إضافة مورد جديد
+                    </a>
+                    <a href="{% url 'purchases:purchase_list' %}" class="quick-btn btn border-secondary text-secondary bg-transparent">
+                        <div class="kpi-icon" style="width:36px;height:36px;background:rgba(100,116,139,0.1);border-radius:8px;font-size:1rem">
+                            <i class="fas fa-list-alt"></i>
+                        </div>
+                        كل طلبات الشراء
+                    </a>
+                    <a href="{% url 'reports:purchase_report' %}" class="quick-btn btn border-warning text-warning bg-transparent">
+                        <div class="kpi-icon" style="width:36px;height:36px;background:rgba(245,158,11,0.1);border-radius:8px;font-size:1rem">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        تقارير المشتريات
+                    </a>
+                </div>
             </div>
         </div>
     </div>
