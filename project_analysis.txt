@@ -1,0 +1,139 @@
+مشروع إدارة المخازن (Warehouse Management System)
+===============================================
+
+ملخص عام
+---------
+مشروع "wms-github" هو تطبيق ويب مبني باستخدام إطار عمل Django لإدارة مخازن، منتجات، مشتريات، مبيعات، تقارير، إشعارات، وتصنيفات. يعتمد المشروع على هيكلية تطبيقات Django التقليدية (apps)، ويستخدم قاعدة بيانات SQLite للتخزين المحلي. يحتوي المشروع على واجهات إدارية ومستخدمين، لوحة تحكم، ونظام صلاحيات مخصص.
+
+المكونات الرئيسية
+-----------------
+- Django 4.2.7
+- قاعدة البيانات: sqlite3
+- تطبيقات داخلية: accounts، products، inventory، purchases، sales، reports، notifications، categories
+- مكتبات إضافية: django_filters، import_export
+- تخزين الملفات الثابتة: WhiteNoise
+
+الملفات المهمة
+--------------
+- `manage.py`: نقطة بداية أوامر Django مثل runserver و makemigrations و migrate.
+- `warehouse_system/settings.py`: إعدادات المشروع، مثل التطبيقات المثبتة، مصادقة المستخدم، قواعد البيانات، الثوابت، وWhiteNoise.
+- `warehouse_system/urls.py`: ربط روابط التطبيق (URL routing) إلى تطبيقات Django المختلفة.
+- `templates/`: مجلد قوالب HTML لواجهة المستخدم.
+- `static/`: مجلد الملفات الثابتة (CSS، JS، صور).
+
+الإعداد العام
+-------------
+- `DEBUG = True` مما يعني أن المشروع في وضع التطوير.
+- `ALLOWED_HOSTS = ['*']` يسمح بالوصول من أي مضيف.
+- `AUTH_USER_MODEL = 'accounts.CustomUser'` يستخدم نموذج مستخدم مخصص يعتمد على البريد الإلكتروني.
+- تم تفعيل `SessionMiddleware` و `AuthenticationMiddleware` و `CsrfViewMiddleware`.
+- تم استخدام `whitenoise.middleware.WhiteNoiseMiddleware` لتقديم الملفات الثابتة.
+- إعدادات الاستاتيكي: `STATIC_ROOT = BASE_DIR / 'staticfiles'` و `STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'`.
+
+نموذج المستخدم والصلاحيات
+--------------------------
+في تطبيق `accounts`:
+- `CustomUser`: يحتفظ بالبريد الإلكتروني كمعرف وحقل دور، وقسم، ورقم هاتف.
+- `UserRole`: يعرّف الأدوار المختلفة مثل `super_admin`، `admin`، `inventory_manager`، `purchase_manager`، `sales_manager`، `viewer`.
+- `Permission`: نموذج مخصص لتخزين الصلاحيات مع `codename` و `module` و `description`.
+- `ActivityLog`: سجل نشاط المستخدمين مع تفاصيل JSON، عنوان IP، وتاريخ العملية.
+- `CustomUserManager`: يدير إنشاء المستخدمين والمديرين الخارقين مع التحقق من البريد الإلكتروني.
+- `has_perm` في `CustomUser`: يتيح التحقق من الصلاحيات من خلال الدور.
+
+روابط تطبيق `accounts`
+----------------------
+- صفحة تسجيل الدخول: `/`
+- تسجيل الخروج: `/logout/`
+- تسجيل مستخدم جديد: `/register/`
+- تغيير كلمة المرور واستعادة كلمة المرور.
+- لوحة التحكم العامة: `/dashboard/`
+- لوحة تحكم المستخدمين وإدارة المستخدمين: `/users/` و `/users/create/` و `/users/<id>/` و `/profile/`.
+- إدارة الأدوار: `/roles/` و `/roles/create/` و `/roles/<id>/update/`.
+- سجلات الأنشطة: `/activity/`.
+
+نموذج المنتجات والمخازن
+-----------------------
+في تطبيق `products`:
+- `Category`: تصنيفات المنتجات مع دعم التصنيفات الفرعية (علاقة ذاتية) و `slug` و `image` و `category_type` و `description`.
+- `Unit`: وحدات القياس مع عامل تحويل.
+- `Product`: نموذج الأصناف مع `SKU`، `barcode`، `category`, `unit`, `purchase_price`, `selling_price`, `min_stock`, `max_stock`, و `has_expiry`.
+- `ProductImage`: معرض صور متعدد لكل منتج.
+
+في تطبيق `inventory`:
+- `Warehouse`: يمثل مواقع التخزين مع `code` فريد، نوع المخزن، السعة، المدير، والحالة.
+- `InventoryItem`: يربط المنتج بالمخزن مع الكمية، الموقع داخل المخزن، تاريخ انتهاء الصلاحية، ورقم الدفعة.
+- `StockMovement`: يسجل حركة المخزون لكل تعديل أو شراء أو بيع أو تحويل أو تسوية.
+- `StockTransfer`: يمثل تحويلات المخزون بين المخازن.
+- `StockAlert`: تنبيهات المخزون مثل نقص الكمية أو انتهاء الصلاحية أو المخزون الزائد.
+
+روابط تطبيق `products`
+----------------------
+- لوحة تحكم المنتجات: `/` و `/inventory/`.
+- إدارة التصنيفات: `/categories/`, `/categories/create/`, `/categories/<id>/`, `/categories/<id>/update/`.
+- إدارة المنتجات: `/products/`, `/products/create/`, `/products/<id>/`, `/products/<id>/update/`, `/products/search/`.
+- استيراد وتصدير المنتجات: `/products/import/`, `/products/import/confirm/`, `/products/import/template/`, `/products/export/`.
+- إدارة وحدات القياس: `/units/`, `/units/create/`, `/units/<id>/update/`, `/units/<id>/delete/`.
+- إدارة المخازن: `/warehouses/`, `/warehouses/create/`, `/warehouses/<id>/`, `/warehouses/<id>/update/`.
+- إدارة حركات المخزون وتنبيهاتها: `/inventory/movements/`, `/inventory/adjustment/`, `/inventory/transfer/`, `/inventory/transfers/`, `/inventory/alerts/`, `/inventory/alerts/<id>/resolve/`, `/inventory/alerts/resolve-all/`.
+- خدمات الباركود: `/barcode/generator/`, `/barcode/scanner/`, `/barcode/print/`, `/barcode/search/`.
+
+المشتريات والمبيعات
+---------------------
+في تطبيق `purchases`:
+- `Supplier`: يخزن بيانات الموردين.
+- `PurchaseOrder`: يربط المورد بمخزن ويحتفظ بحالة الطلب، المبلغ الكلي، وملاحظات.
+- `PurchaseItem`: عناصر طلب الشراء مع الكمية والسعر الإجمالي.
+- روابط مثل `/purchases/suppliers/`, `/purchases/orders/`, وعرض/تعديل/حذف الطلبات.
+- دعم طباعة ملفات PDF للطلب.
+
+في تطبيق `sales`:
+- `Customer`: بيانات العملاء.
+- `SalesInvoice`: فاتورة البيع مع العميل، المخزن، الحالة، والمبلغ الكلي.
+- `SalesItem`: عناصر الفاتورة مع الكمية والسعر.
+- روابط مثل `/sales/customers/`, `/sales/invoices/`, وإنشاء فواتير وطباعتها.
+
+التقارير والإشعارات
+-------------------
+- تطبيق `reports`: يحتوي على لوحات تقرير المبيعات وطلبات الشراء.
+- تطبيق `notifications`: يعرض إشعارات، ويتيح تعليم الإشعارات كمقروءة.
+
+هيكلية الروابط
+-----------------
+في `warehouse_system/urls.py` يتم تضمين جميع تطبيقات المشروع:
+- `accounts` و `products` على الجذر `/`
+- `inventory/` لتطبيق المخزون
+- `purchases/` للمشتريات
+- `sales/` للمبيعات
+- `categories/` لتصنيفات إضافية
+- `reports/` للتقارير
+- `notifications/` للإشعارات
+
+ملاحظات إضافية
+----------------
+- يستخدم النظام `templates/` لمحتوى الصفحات، مع تقسيم حسب التطبيق.
+- يوجد `static/` للمصادر الثابتة، ما يعني أن المشروع يدعم واجهة أمامية منظمة.
+- `accounts` يعتمد على نظام تسجيل دخول مخصص يعتمد على البريد الإلكتروني ويدعم تغيير واستعادة كلمة المرور.
+- `inventory/urls.py` و `categories/urls.py` فارغتان، ما يعني أن بعض الروابط قد تُدار عبر تطبيقات أخرى أو تحتاج تكوينًا إضافيًا.
+
+تدفق البيانات العام
+-------------------
+1. تسجيل دخول المستخدم عبر `accounts.custom_login`.
+2. عرض لوحة تحكم عامة أو خاصة تبعًا للصلاحية.
+3. إدارة المنتجات والتصنيفات والمخازن من خلال `products`.
+4. تسجيل طلبات الشراء وربطها بالموردين والمخازن.
+5. إنشاء فواتير المبيعات وربطها بالعملاء والمخازن.
+6. تتبع المخزون عبر `InventoryItem` و `StockMovement` و `StockTransfer`.
+7. تنبيه المديرين بالمخزون المنخفض أو انتهاء الصلاحية عبر `StockAlert`.
+8. إنشاء تقارير مخصصة للمبيعات والمشتريات.
+9. حفظ نشاط المستخدمين في `ActivityLog` لأغراض المراقبة.
+
+خاتمة
+------
+المشروع عبارة عن نظام إدارة مخازن متكامل يحتوي على وحدات رئيسية لإدارة المستخدمين، المنتجات، المخزون، المشتريات، المبيعات، التقارير، والإشعارات. البنية الحالية واضحة وقابلة للتوسيع، لكنها تحتاج إلى ضبط بعض التطبيقات الفرعية مثل `inventory.urls` و `categories.urls` إذا كانت ستُستخدم منفصلة.
+
+يمكن تطوير المشروع أكثر بإضافة:
+- دعم أكثر تقدمًا لصلاحيات الوصول حسب دور المستخدم.
+- واجهات API من خلال Django REST Framework.
+- توثيق أفضل للبيانات وإجراءات الأعمال.
+- مزامنة المخزون على مستوى الوقت الحقيقي.
+- اختبار شامل للوحدات (unit tests) لكل تطبيق.
