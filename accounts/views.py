@@ -20,62 +20,40 @@ def custom_login(request):
     تحكم في عملية تسجيل دخول المستخدمين.
     إذا كان المستخدم مسجلاً دخوله بالفعل، يتم توجيهه للوحة التحكم.
     """
-    if request.user.is_authenticated:
-        return redirect('accounts:dashboard')
     if request.user.is_authenticated:  # التحقق مما إذا كان المستخدم يمتلك جلسة نشطة بالفعل
         return redirect('accounts:dashboard')  # توجيهه للوحة التحكم لمنع الوصول لصفحة الدخول مرة أخرى
 
-    if request.method == 'POST':
-        form = LoginForm(request.POST)
-        if form.is_valid():
     if request.method == 'POST':  # معالجة بيانات نموذج الدخول عند إرسالها
         form = LoginForm(request.POST)  # تعبئة النموذج بالبيانات المرسلة
         if form.is_valid():  # التأكد من صحة تنسيق البريد الإلكتروني وكلمة المرور
             # استخراج البيانات النظيفة من النموذج
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            remember_me = form.cleaned_data['remember_me']
             email = form.cleaned_data['email']  # الحصول على البريد الإلكتروني الموثق
             password = form.cleaned_data['password']  # الحصول على كلمة المرور
             remember_me = form.cleaned_data['remember_me']  # التحقق من خيار البقاء متصلاً
 
             # التحقق من صحة بيانات الاعتماد
-            user = authenticate(request, email=email, password=password)
             user = authenticate(request, email=email, password=password)  # استدعاء محرك المصادقة المخصص لفحص البيانات
 
-            if user is not None:
-                login(request, user)  # تسجيل الدخول في الجلسة (Session)
             if user is not None:  # في حال مطابقة البيانات لمستخدم موجود ونشط
                 login(request, user)  # إنشاء جلسة عمل رسمية للمستخدم في النظام
                 
                 # إذا لم يختر المستخدم "تذكرني"، تنتهي الجلسة بإغلاق المتصفح
-                if not remember_me:
-                    request.session.set_expiry(0)
                 if not remember_me:  # إذا لم يتم تفعيل خيار البقاء متصلاً
                     request.session.set_expiry(0)  # ضبط صلاحية الجلسة لتنتهي فور إغلاق نافذة المتصفح
 
                 # تسجيل النشاط في سجل الأنشطة للرقابة
-                log_activity(user, 'تسجيل دخول', 'CustomUser', user.id,
-                             {'email': user.email}, request)
-                messages.success(request, f'مرحباً بعودتك {user.first_name}!')
                 log_activity(user, 'تسجيل دخول', 'CustomUser', user.id,  # تدوين عملية الدخول في السجل الأمني
                              {'email': user.email}, request)  # إضافة تفاصيل البريد وعنوان IP
                 messages.success(request, f'مرحباً بعودتك {user.first_name}!')  # عرض رسالة ترحيبية
 
                 # التوجيه للصفحة التي كان يحاول الوصول إليها أو للوحة التحكم
-                next_url = request.GET.get('next')
-                if next_url:
-                    return redirect(next_url)
-                return redirect('accounts:dashboard')
                 next_url = request.GET.get('next')  # جلب الرابط الذي حاول المستخدم الوصول إليه قبل تسجيل الدخول
                 if next_url:  # إذا كان هناك رابط مخزن
                     return redirect(next_url)  # إعادة توجيهه للرابط الأصلي
                 return redirect('accounts:dashboard')  # وإلا التوجه للوحة التحكم الافتراضية
             else:
-                messages.error(request, 'البريد الإلكتروني أو كلمة المرور غير صحيحة.')
                 messages.error(request, 'البريد الإلكتروني أو كلمة المرور غير صحيحة.')  # إظهار خطأ في حال فشل المصادقة
     else:
-        form = LoginForm()
         form = LoginForm()  # عرض نموذج فارغ في حالة طلب الصفحة عبر GET
 
     return render(request, 'accounts/auth/login.html', {'form': form})
@@ -85,14 +63,8 @@ def custom_logout(request):
     """
     تسجيل خروج المستخدم وإنهاء الجلسة الحالية.
     """
-    if request.user.is_authenticated:
     if request.user.is_authenticated:  # التحقق من أن هناك مستخدم مسجل بالفعل
         # تسجيل عملية الخروج في السجل قبل إنهاء الجلسة
-        log_activity(request.user, 'تسجيل خروج', 'CustomUser', request.user.id,
-                     {'email': request.user.email}, request)
-    logout(request)
-    messages.success(request, 'تم تسجيل الخروج بنجاح.')
-    return redirect('accounts:login')
         log_activity(request.user, 'تسجيل خروج', 'CustomUser', request.user.id,  # توثيق وقت خروج المستخدم
                      {'email': request.user.email}, request)  # أرشفة البيانات قبل مسح الجلسة
     logout(request)  # تدمير بيانات الجلسة (Session) نهائياً
