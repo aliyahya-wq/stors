@@ -3,17 +3,12 @@ def get_client_ip(request):
     استخراج عنوان IP الحقيقي للجهاز الذي يقوم بالطلب.
     يتعامل مع عناوين IP سواء كان المستخدم خلف خادم وكيل (Proxy) أو اتصال مباشر.
     """
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')  # التحقق من وجود عناوين ممررة عبر بروكسي
     if x_forwarded_for:  # إذا كان المستخدم يتصل عبر خادم وسيط
         # في حال وجود بروكسي، يكون العنوان الأول هو العنوان الحقيقي للجهاز
-        ip = x_forwarded_for.split(',')[0]
         ip = x_forwarded_for.split(',')[0]  # استخراج أول عنوان IP في القائمة (العنوان الأصلي)
     else:
         # الاتصال المباشر
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
         ip = request.META.get('REMOTE_ADDR')  # الحصول على العنوان المباشر من خصائص الطلب
     return ip  # إرجاع العنوان النهائي
 

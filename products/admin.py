@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import *
 
-{# إعدادات واجهة الإدارة للتصنيفات: تهدف لتسهيل تنظيم المنتجات في مجموعات منطقية #}
+# إعدادات واجهة الإدارة للتصنيفات: تهدف لتسهيل تنظيم المنتجات في مجموعات منطقية 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     # الحقول التي تظهر في جدول العرض الرئيسي للتصنيفات
@@ -14,7 +14,7 @@ class CategoryAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ['name']}
 
 
-{# إعدادات واجهة الإدارة للمنتجات: القلب النابض للمستودع، تتيح إدارة كافة بيانات الأصناف #}
+# إعدادات واجهة الإدارة للمنتجات: القلب النابض للمستودع، تتيح إدارة كافة بيانات الأصناف 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     # عرض البيانات المالية والفنية الأساسية للمنتج في القائمة

@@ -8,7 +8,7 @@ from django.utils.text import slugify
 
 from warehouse_system import settings
 
-{# نموذج التصنيفات: يستخدم لتنظيم المنتجات في مجموعات شجرية (مثل الإلكترونيات -> هواتف) #}
+# نموذج التصنيفات: يستخدم لتنظيم المنتجات في مجموعات شجرية (مثل الإلكترونيات -> هواتف)
 class Category(models.Model):
     CATEGORY_TYPES = [
         ('electronics', 'الإلكترونيات'),
@@ -53,7 +53,7 @@ class Category(models.Model):
         return self.products.count()
 
 
-{# نموذج وحدات القياس: لتعريف وحدات مثل (كجم، قطعة، لتر) والتحويل بينها #}
+# نموذج وحدات القياس: لتعريف وحدات مثل (كجم، قطعة، لتر) والتحويل بينها
 class Unit(models.Model):
     name = models.CharField(max_length=50, verbose_name="اسم الوحدة")
     symbol = models.CharField(max_length=10, verbose_name="الرمز")
@@ -70,7 +70,7 @@ class Unit(models.Model):
         return f"{self.name} ({self.symbol})"
 
 
-{# نموذج المنتجات: يمثل الأصناف المخزنة في المستودع بكافة تفاصيلها الفنية والمالية #}
+# نموذج المنتجات: يمثل الأصناف المخزنة في المستودع بكافة تفاصيلها الفنية والمالية
 class Product(models.Model):
     name = models.CharField(max_length=200, verbose_name="اسم المنتج")
     # SKU هو رقم فريد لتعريف الصنف داخل النظام
@@ -130,7 +130,7 @@ class Product(models.Model):
             return 'normal'
 
 
-{# نموذج معرض الصور: للسماح بإضافة صور متعددة لنفس المنتج #}
+# نموذج معرض الصور: للسماح بإضافة صور متعددة لنفس المنتج 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='products/gallery/')
